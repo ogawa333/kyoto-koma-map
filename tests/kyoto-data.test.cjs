@@ -51,3 +51,13 @@ test('Kyoto screenshot junctions at 3395/3397m have opposite side roads and must
     assert.equal(engine.similarJunctions(f,target),true);
   }
 });
+
+test('former Kyoto frame 091 may be omitted while the Shiokoji route remains unchanged',()=>{
+  const result=engine.generate(data,engine.orderWaypoints(data.sampleLocations,()=>.999));
+  const frame=result.frames.find(f=>f.id==='junction:5140799169:0');assert.ok(frame);
+  assert.equal(Math.round(frame.at),5055);assert.equal(frame.label,'直進');assert.equal(frame.canOmit,true);
+  const selected=engine.selectFrames(result.frames,'reduced');
+  assert.equal(selected.some(f=>f.id===frame.id),false);
+  assert.equal(engine.selectFrames(result.frames,'all').some(f=>f.id===frame.id),true);
+  assert.equal(Math.round(result.distance),5776);
+});

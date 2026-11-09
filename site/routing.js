@@ -141,14 +141,24 @@
     const id=ids[index],prev=ids[index-1],next=ids[index+1],center=g.nodes.get(id);
     const incoming=(g.visual.get(id)||[]).find(e=>e.to===prev);
     const candidates=(g.visual.get(id)||[]).filter(e=>e.to!==prev);
-    // A visible but unwalkable branch can still look like the natural continuation.
-    if(!incoming||candidates.length<2||candidates.some(e=>!(g.adj.get(id)||[]).some(a=>a.to===e.to)))return false;
+    if(!incoming||candidates.length<2)return false;
+    const isParking=e=>e?.way.tags?.highway==='service'&&e.way.tags.service==='parking_aisle';
+    const blocked=candidates.filter(e=>!(g.adj.get(id)||[]).some(a=>a.to===e.to));
+    // Only relax our default parking-aisle exclusion, never actual access restrictions.
+    if(blocked.some(e=>{
+      const t=e.way.tags||{};
+      return !isParking(e)||/^(no|private|use_sidepath)$/.test(t.foot||'')||/^(no|private)$/.test(t.access||'')||t['oneway:foot']||t['foot:forward']==='no'||t['foot:backward']==='no';
+    }))return false;
+    if(isParking(incoming)||isParking(candidates.find(e=>e.to===next)))return false;
     if(signOf(center)||candidates.some(e=>signOf(g.nodes.get(e.to))))return false;
     const approach=roadShape(g,id,prev,8).at(-1),heading=bearing(approach,center);
     let choices=candidates.map(e=>({...e,turn:Math.abs(angle(bearing(center,roadShape(g,id,e.to,8).at(-1))-heading))/rad}));
     // Prefer straight ahead only when it is clearly distinct from every other branch.
     const sorted=[...choices].sort((a,b)=>a.turn-b.turn);
     if(sorted[0].turn<25&&sorted[1].turn-sorted[0].turn>=20)return sorted[0].to===next;
+    // A blocked parking aisle is harmless only with a clear straight continuation.
+    // Do not fall through to width/surface heuristics for an ambiguous parking fork.
+    if(blocked.length)return false;
     // Unknown centerlines cannot be inferred from road names or road categories.
     // Width and surface continuity are used only if all branches have explicit data.
     const tags=incoming.way.tags||{};
@@ -290,7 +300,7 @@
       }
     }
     for(const f of frames)f.landmark=f.landmarks[0]||null;
-    return {generationVersion:7,frames,distance:total,path:points.map(p=>({lat:p.lat,lon:p.lon})),unassignedCheckpoints};
+    return {generationVersion:8,frames,distance:total,path:points.map(p=>({lat:p.lat,lon:p.lon})),unassignedCheckpoints};
   }
   function generate(data, locations, options = {}) {
     if (locations.length < 2 || locations.some(p => !Number.isFinite(p.lat) || !Number.isFinite(p.lon))) throw new Error('スタートとゴールの地点を指定してください。');
