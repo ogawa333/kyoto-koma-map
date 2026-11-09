@@ -35,3 +35,19 @@ test('area polygons are not treated as perimeter roads',()=>{
   const g=engine.graph({nodes,ways:[{id:1,nodes:[1,2,3,1],tags:{highway:'pedestrian',area:'yes'}}]});
   assert.equal(g.adj.size,0);assert.equal(g.visual.size,0);
 });
+
+test('Kyoto screenshot junctions at 3395/3397m have opposite side roads and must not match',()=>{
+  const result=engine.generate(data,engine.orderWaypoints(data.sampleLocations,()=>0));
+  const right=result.frames.find(f=>f.id==='junction:1314708603:0');
+  const left=result.frames.find(f=>f.id==='junction:2090717787:0');
+  assert.ok(right);assert.ok(left);assert.equal(right.branches.length,3);assert.equal(left.branches.length,3);
+  assert.ok(engine.junctionSignature(right));assert.ok(engine.junctionSignature(left));
+  assert.equal(engine.similarJunctions(right,left),false);
+  assert.equal(engine.similarJunctions(left,right),false);
+  const shown=engine.selectFrames(result.frames,'reduced');
+  for(const f of shown.filter(f=>f.retentionTargetId)){
+    const target=shown.find(t=>t.id===f.retentionTargetId);assert.ok(target);
+    assert.equal(target.number,f.retentionTargetNumber);assert.ok(target.at>f.at);
+    assert.equal(engine.similarJunctions(f,target),true);
+  }
+});

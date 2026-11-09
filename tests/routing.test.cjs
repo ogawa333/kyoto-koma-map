@@ -98,3 +98,18 @@ test('a three-way junction stays omitted before a four-way target, but not befor
   assert.equal(r.selectFrames([start,early,{...target,...shape([180,0,90])}],'reduced').length,3);
   assert.equal(r.selectFrames([start,early,target],'all').length,3);
 });
+
+test('short connecting roads retain right/left handedness instead of falling back to unknown',()=>{
+  const right=shape([180,0,90]),left=shape([180,0,-90]);
+  right.branches[1][1]={lat:1.7/111320,lon:0};
+  left.branches[0][1]={lat:-1.7/111320,lon:0};
+  assert.ok(r.junctionSignature(right));assert.ok(r.junctionSignature(left));
+  assert.equal(r.similarJunctions(right,left),false);
+  assert.equal(r.similarJunctions(right,shape([180,0,90])),true);
+});
+test('retention reason names the final numbered target after insertions',()=>{
+  const frames=[{id:'start',at:0,canOmit:false,...shape([180,-60,60])},{id:'early',at:100,canOmit:true,...shape([180,0,90])},{id:'target',at:200,canOmit:false,label:'直進',...shape([180,0,90])}];
+  const selected=r.selectFrames(frames,'reduced');
+  assert.equal(selected[1].retentionTargetId,'target');assert.equal(selected[1].retentionTargetNumber,3);
+  assert.match(selected[1].retentionReason,/コマ003/);
+});
