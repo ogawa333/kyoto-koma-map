@@ -14,13 +14,14 @@ for(const start of graph.adj.keys()){
   }
   if(component.size>largest.size)largest=component;
 }
-function landmark(names){
-  for(const name of names){const exact=data.places.find(p=>p.name===name);if(exact)return exact;}
-  for(const name of names){const partial=data.places.find(p=>p.name.includes(name));if(partial)return partial;}
+function landmark(names,accept){
+  const candidates=data.places.filter(accept);
+  for(const name of names){const exact=candidates.find(p=>p.name===name);if(exact)return exact;}
+  for(const name of names){const partial=candidates.find(p=>p.name.includes(name));if(partial)return partial;}
   throw new Error('OSM landmark missing: '+names.join(' / '));
 }
-function streetPoint(names,checkpoint){
-  const p=landmark(names);let best;
+function streetPoint(names,checkpoint,accept=()=>true){
+  const p=landmark(names,accept);let best;
   for(const [a,edges] of graph.adj){
     if(!largest.has(a))continue;
     for(const e of edges){
@@ -35,7 +36,14 @@ function streetPoint(names,checkpoint){
   return {location:{name:p.name+'付近（道路上）',...best.point,...(checkpoint?{checkpoint:true,mission:'安全な場所から周囲を観察し、この場所の特徴を1つ記録しよう。'}:{})},reference:{id:p.id,name:p.name,lat:p.lat,lon:p.lon,streetWay:best.way.id,offsetMeters:best.distance}};
 }
 const start=streetPoint(['京都タワー','ニデック京都タワー'],false);
-const checkpoints=[['東本願寺'],['西本願寺'],['渉成園'],['梅小路公園'],['東寺','教王護国寺']].map(names=>streetPoint(names,true));
+const worship=p=>p.tags?.amenity==='place_of_worship';
+const checkpoints=[
+  streetPoint(['東本願寺'],true,worship),
+  streetPoint(['西本願寺'],true,worship),
+  streetPoint(['渉成園'],true,p=>p.tags?.leisure==='garden'),
+  streetPoint(['梅小路公園'],true,p=>p.tags?.leisure==='park'),
+  streetPoint(['東寺','教王護国寺'],true,worship)
+];
 const locations=[start.location,...checkpoints.map(p=>p.location),{...start.location,name:'京都駅北側（ゴール）'}];
 const stats=[];
 for(const random of [()=>0,()=>.999]){

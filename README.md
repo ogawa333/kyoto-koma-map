@@ -2,24 +2,31 @@
 
 三崎港版とは別のリポジトリ・ブラウザ保存領域で動く静的Webアプリです。京都駅北側を発着し、東本願寺・西本願寺・渉成園・梅小路公園・東寺の付近を巡るCP5か所のコースを用意します。実際の通行可否や営業時間は実施前に確認してください。
 
-## 現在の状態
+## 動作確認済み
 
-アプリと取得・検証スクリプトは準備済みです。クラウド環境の通信制限により、実際の京都OSMデータの取得とGitHub上の新規リポジトリ作成は未完了です。`site/data/kyoto-network.js` は未準備を示すファイルであり、架空の道路や三浦の道路を京都の道路として使っていません。データ取得とサンプル検証が完了するまではアプリの経路生成は使えません。
+実際のOpenStreetMapデータ（道路7,689本・経路用ノード26,853点）を同梱しています。基本のコマ地図生成に外部APIキーやデータ再取得は不要です。サンプルは後半の訪問順により約5.78〜5.99km、全175〜180コマ、省略版99〜110コマ、CP5か所になります。サンプル地点の参照元OSM IDと道路上への補正距離もデータに記録しています。
+
+京都の実ルートを使うテストと、ブラウザでの生成・全表示切替・地図番号照合・手元の画像追加・JSON入出力・再読み込み・参加者表示・PDF出力を確認済みです。実際のGoogle Street View APIへの課金を伴う画像取得は行っていません。通行可否・営業時間などの現地確認は別途必要です。
 
 ## セットアップ
 
-Python 3とNode.jsを使用します。外部パッケージのインストールは不要です。
+通常の起動はPython 3だけで可能です。データ更新・テストではNode.jsも使用します。外部パッケージのインストールは不要です。
 
 ```bash
 cd /workspaces/kyoto-koma-map
-python3 scripts/fetch_osm.py
-node scripts/prepare_sample.cjs
 python3 -m http.server 8000 --directory site
 ```
 
 クラウド環境内のチェックアウトは `/workspace/kyoto-koma-map`、Codespacesの標準パスは `/workspaces/kyoto-koma-map` です。Codespacesではポート8000の「Open in Browser」で開いてください。既存チェックアウトを使用し、依頼がない限りGit worktreeは作りません。
 
-`fetch_osm.py` はOpenStreetMap公式APIから京都駅周辺のXMLを取得し、道路、歩行制限、目印、標識、背景をJavaScriptへ変換します。`prepare_sample.cjs` はOSMの名所を近隣の道路へ補正し、後半の両訪問順で経路・CP数・コマ生成を検証してからサンプルを保存します。地点が欠ける場合や経路が成立しない場合は、架空の補間で埋めずにエラーにします。出典IDと補正距離はデータに残します。
+道路データを更新する場合は、次を実行してください。
+
+```bash
+python3 scripts/fetch_osm.py
+node scripts/prepare_sample.cjs
+```
+
+`fetch_osm.py` はOpenStreetMap公式APIから京都駅周辺のXMLを小さなタイルに分けて取得・重複排除し、道路、歩行制限、目印、標識、背景をJavaScriptへ変換します。`prepare_sample.cjs` は寺院・公園の種類を照合して同名の駅やバス停を除き、OSMの名所を近隣の道路へ補正し、後半の両訪問順で経路・CP数・コマ生成を検証してからサンプルを保存します。地点が欠ける場合や経路が成立しない場合は、架空の補間で埋めずにエラーにします。出典IDと補正距離はデータに残します。
 
 外部から取得済みの公式XMLを使う場合:
 
@@ -28,7 +35,7 @@ python3 scripts/fetch_osm.py --input /path/to/kyoto.osm
 node scripts/prepare_sample.cjs
 ```
 
-実際のOSMデータ取得・サンプル検証後に `site/data/kyoto-network.js` をコミットすれば、基本機能は外部APIキーなしで動きます。更新で取得データを作り直したらサンプル準備も再実行してください。
+更新した `site/data/kyoto-network.js` はサンプル検証後にコミットしてください。更新で取得データを作り直したらサンプル準備も再実行してください。
 
 ## 機能
 
@@ -48,16 +55,16 @@ node scripts/prepare_sample.cjs
 
 ```bash
 node tests/routing.test.cjs
+node tests/kyoto-data.test.cjs
 python3 -m unittest discover -s tests -p 'test_*.py'
 ```
 
-京都データ取得後は `node scripts/prepare_sample.cjs` も必須です。実ブラウザでは、サンプル生成、全表示切替、番号一致、画像追加、JSON保存・読み込み、再読み込み、PDFを確認してください。現時点で実際の京都ルートのブラウザ検証は未完了です。
+京都データ取得後は `node scripts/prepare_sample.cjs` も必須です。実ブラウザでは、サンプル生成、全表示切替、番号一致、画像追加、JSON保存・読み込み、再読み込み、PDFを確認してください。実際の京都ルートでこれらのブラウザ検証は完了しています。
 
 ## GitHubでの作成・公開
 
-新規リポジトリ候補名は `ogawa333/kyoto-koma-map` です。GitHub APIでの作成が許可されない場合は、GitHub上で空のリポジトリを作成し、このローカルリポジトリの `main` をpushします。既存リポジトリを上書きしないでください。
-
-GitHub Pagesは、実データの準備と動作確認後に Settings → Pages → Deploy from a branch → main → /(root) で公開できます。ルートの `index.html` から `site/index.html` へ移動します。公開はこの準備だけでは行われません。
+リポジトリは https://github.com/ogawa333/kyoto-koma-map です。Codespacesはこのリポジトリの Code → Codespaces から作成できます。
+GitHub Pagesは、公開する場合に Settings → Pages → Deploy from a branch → main → /(root) で公開できます。ルートの `index.html` から `site/index.html` へ移動します。公開はこの準備だけでは行われません。
 
 必要な通信先: `api.openstreetmap.org`（道路データ取得）、`overpass-api.de`（アプリ内の任意データ更新）、`api.github.com`（GitHub API）、`github.com`（Git読み書き）。任意のGoogle画像確認には別途 `maps.googleapis.com`、WebフォントにはGoogle Fontsを使用します。
 

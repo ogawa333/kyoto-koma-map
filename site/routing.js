@@ -12,7 +12,7 @@
   const forbidden = /^(motorway|motorway_link|trunk|trunk_link|construction|proposed|raceway|busway|platform)$/;
   const permit = /^(yes|designated|permissive|destination)$/;
   function walkable(t) {
-    if (!t.highway || forbidden.test(t.highway) || /^(no|private|use_sidepath)$/.test(t.foot || '')) return false;
+    if (!t.highway || t.area==='yes' || forbidden.test(t.highway) || /^(no|private|use_sidepath)$/.test(t.foot || '')) return false;
     if (/^(no|private)$/.test(t.access || '') && !permit.test(t.foot || '')) return false;
     if (t.highway === 'service' && /^(driveway|parking_aisle)$/.test(t.service || '') && !permit.test(t.foot || '')) return false;
     return true;
@@ -26,7 +26,7 @@
     };
     for (const way of data.ways) {
       const t = way.tags || {};
-      if (!t.highway || /^(construction|proposed|platform)$/.test(t.highway)) continue;
+      if (!t.highway || t.area==='yes' || /^(construction|proposed|platform)$/.test(t.highway)) continue;
       for (let i = 1; i < way.nodes.length; i++) {
         const a = way.nodes[i - 1], b = way.nodes[i];
         if (!nodes.has(a) || !nodes.has(b) || a === b) continue;
