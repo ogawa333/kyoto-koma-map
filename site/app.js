@@ -189,9 +189,7 @@
     finally{if(request===imageLoad)$('saveFrame').disabled=false;}
   }
   function diagram(f, unique) {
-    const heading=f.heading, center=f.center, cos=Math.cos(center.lat*Math.PI/180), scale=2.6;
-    const point=p=>{const east=(p.lon-center.lon)*111320*cos,north=(p.lat-center.lat)*111320;return {x:110+(east*Math.cos(heading)-north*Math.sin(heading))*scale,y:105-(east*Math.sin(heading)+north*Math.cos(heading))*scale};};
-    const path=ps=>ps.map((p,i)=>{const q=point(p);return `${i?'L':'M'}${q.x.toFixed(1)},${q.y.toFixed(1)}`;}).join('');
+    const {point,path}=window.KomaDiagram.geometry(f);
     const incoming=f.routeIn.length?`<path d="${path(f.routeIn)}" fill="none" stroke="#20251f" stroke-width="3.2"/>`:'';
     let incomingArrow='';if(f.routeIn.length){const a=point(f.routeIn[0]),b=point(f.routeIn.at(-1));const x=a.x+(b.x-a.x)*.42,y=a.y+(b.y-a.y)*.42;incomingArrow=`<path d="M${a.x+(b.x-a.x)*.25},${a.y+(b.y-a.y)*.25}L${x},${y}" fill="none" stroke="#20251f" stroke-width="2.5" marker-end="url(#arrow${unique})"/>`;}
     const outgoing=f.routeOut.length?`<path d="${path(f.routeOut)}" fill="none" stroke="#20251f" stroke-width="3.2" marker-end="url(#arrow${unique})"/>`:'';

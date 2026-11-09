@@ -72,3 +72,16 @@ test('1766m straight signal remains visible without restoring earlier lookalikes
     assert.equal(selected.some(f=>f.retentionTargetId===id),false);
   }
 });
+test('the real Kyoto evaluation set includes both rule classes and excludes protected candidates',()=>{
+  const evaluation=require('../site/evaluation-core.js');
+  const result=engine.generate(data,engine.orderWaypoints(data.sampleLocations,()=>.999));
+  const course={result:{...result,allFrames:result.frames,name:'京都評価セット'},edits:{}};
+  const dataset=evaluation.buildDataset(course,{id:'kyoto-real-evaluation'});evaluation.validateDataset(dataset);
+  assert.ok(dataset.pairs.some(p=>p.rulePrediction==='keep'));assert.ok(dataset.pairs.some(p=>p.rulePrediction==='omit'));
+  for(const pair of dataset.pairs){
+    const index=result.frames.findIndex(f=>f.id===pair.context.candidateId),target=result.frames.find(f=>f.id===pair.context.targetId);
+    assert.equal(engine.baseFrameIsRequired(result.frames[index],index,result.frames.length),false);
+    assert.equal(engine.skipSimilarityTarget(target),false);
+    assert.equal(Object.hasOwn(pair.modelInput.candidate,'routeOut'),false);
+  }
+});
