@@ -136,3 +136,33 @@ test('private, forbidden, directional, driveway and signed branches keep diagram
   d.ways[2].tags.service='parking_aisle';d.nodes[1].tags={highway:'traffic_signals'};
   assert.equal(r.continuation(r.graph(d),[1,2,3],1),false);
 });
+
+function signalSequence(label='直進') {
+  return [{id:'start',at:0,canOmit:false,...shape([180,-60,60])},
+    {id:'early',at:100,canOmit:true,...shape([180,0,90])},
+    {id:'signal',at:200,canOmit:false,label,retainedForStraightSignal:true,...shape([180,0,90])},
+    {id:'after',at:300,canOmit:true,...shape([180,0,90])},
+    {id:'turn',at:400,canOmit:false,label:'右へ進む',...shape([180,0,90])}];
+}
+test('straight signal skips only its own lookalikes and remains an interval boundary',()=>{
+  const frames=signalSequence(),selected=r.selectFrames(frames,'reduced');
+  assert.deepEqual(selected.map(f=>f.id),['start','signal','after','turn']);
+  assert.equal(selected.find(f=>f.id==='after').retentionTargetId,'turn');
+  assert.equal(r.selectFrames(frames,'all').length,5);
+});
+test('turns, non-signal signs, nearby icons, CPs and edits retain normal similarity protection',()=>{
+  assert.ok(r.selectFrames(signalSequence('左へ進む'),'reduced').some(f=>f.id==='early'));
+  const frames=signalSequence();delete frames[2].retainedForStraightSignal;frames[2].signs=[{kind:'signals'}];
+  assert.ok(r.selectFrames(frames,'reduced').some(f=>f.id==='early'));
+  frames[2].signs=[{kind:'stop'}];assert.ok(r.selectFrames(frames,'reduced').some(f=>f.id==='early'));
+  frames[2].retainedForStraightSignal=true;frames[2].checkpoints=[{name:'CP'}];
+  assert.ok(r.selectFrames(frames,'reduced').some(f=>f.id==='early'));
+  frames[2].checkpoints=[];assert.ok(r.selectFrames(frames,'reduced',{signal:{note:'確認する場所'}}).some(f=>f.id==='early'));
+});
+test('signal-only retention metadata distinguishes straight from turning or blocked geometry',()=>{
+  const d=junction([[0,20],[20,0]]);d.nodes[1].tags={highway:'traffic_signals'};
+  const straight=r.generate(d,[d.nodes[0],d.nodes[2]]).frames[0];
+  assert.equal(straight.retainedForStraightSignal,true);assert.equal(straight.canOmit,false);
+  const turn=r.generate(d,[d.nodes[0],d.nodes[3]]).frames[0];assert.equal(turn.retainedForStraightSignal,false);
+  d.ways[2].tags.access='private';assert.equal(r.generate(d,[d.nodes[0],d.nodes[2]]).frames[0].retainedForStraightSignal,false);
+});
