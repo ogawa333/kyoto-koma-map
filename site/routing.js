@@ -217,9 +217,17 @@
     // Equal road counts are required; every branch must have an angular match.
     return count===small.length;
   }
+  function hasFrameEdit(frame,edits={}) {
+    return Object.values(edits[frame.id]||{}).some(v=>v&&typeof v==='object'?Object.keys(v).length:!!v);
+  }
+  function baseFrameIsRequired(frame,index,count,edits={}) {
+    return index===0||index===count-1||!frame.canOmit||!!(frame.checkpoints||[]).length||hasFrameEdit(frame,edits);
+  }
+  function skipSimilarityTarget(frame,edits={}) {
+    return frame.label==='直進'&&!!frame.retainedForStraightSignal&&!(frame.checkpoints||[]).length&&!hasFrameEdit(frame,edits);
+  }
   function selectFrames(frames, mode='all', edits={}) {
-    const hasEdit=f=>Object.values(edits[f.id]||{}).some(v=>v&&typeof v==='object'?Object.keys(v).length:!!v);
-    const keep=frames.map((f,i)=>mode!=='reduced'||i===0||i===frames.length-1||!f.canOmit||(f.checkpoints||[]).length||hasEdit(f));
+    const keep=frames.map((f,i)=>mode!=='reduced'||baseFrameIsRequired(f,i,frames.length,edits));
     const reasons=new Map(),signatures=frames.map(junctionSignature);
     if(mode==='reduced'){
       // Each insertion splits the interval. Restart until no omitted frame resembles
@@ -232,7 +240,7 @@
           // A straight signal frame is its own visible landmark, not a navigation
           // decision requiring lookalike junctions to be restored. Keep the interval
           // boundary here so earlier junctions are not compared beyond this signal.
-          if(frames[target].label==='直進'&&frames[target].retainedForStraightSignal&&!(frames[target].checkpoints||[]).length&&!hasEdit(frames[target])){previous=target;continue;}
+          if(skipSimilarityTarget(frames[target],edits)){previous=target;continue;}
           for(let i=previous+1;i<target;i++)if(similarSignatures(signatures[i],signatures[target],frames[i].branches?.length,frames[target].branches?.length)){
             keep[i]=true;reasons.set(i,{targetId:frames[target].id,label:frames[target].label||'表示'});changed=true;break;
           }
@@ -321,7 +329,7 @@
     const result = makeFrames(g, ids, visits, data, options);
     return {...result, snapped: snapped.map(s => ({...g.nodes.get(s.id), offset: s.offset})), sourceDate: data.timestamp};
   }
-  const api = {distance, bearing, angle, walkable, graph, snap, shortest, generate, continuation, selectFrames, junctionSignature, similarJunctions, orderWaypoints, signOf, project, landmarkInfo};
+  const api = {distance, bearing, angle, walkable, graph, snap, shortest, generate, continuation, selectFrames, baseFrameIsRequired, skipSimilarityTarget, junctionSignature, similarJunctions, orderWaypoints, signOf, project, landmarkInfo};
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.KomaRouting = api;
 })(typeof window === 'undefined' ? globalThis : window);

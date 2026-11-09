@@ -10,12 +10,13 @@
   <script defer src="data/kyoto-network.js"></script>
   <script defer src="routing.js"></script>
   <script defer src="streetview.js"></script>
+  <script defer src="diagram.js"></script>
   <script defer src="app.js"></script>
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="#"><span class="brand-mark">↗</span><span>コマ地図メーカー<small>KYOTO STATION · WALK RALLY</small></span></a>
-    <div class="top-actions"><span id="saveState" class="save-state">ブラウザに自動保存</span><button class="button" id="importButton">読み込む</button><button class="button" id="downloadButton">データ保存</button><button class="button primary" id="printButton">▤　印刷 / PDF</button></div>
+    <div class="top-actions"><a class="button" href="evaluation.html" target="_blank" rel="noopener">交差点を評価</a><span id="saveState" class="save-state">ブラウザに自動保存</span><button class="button" id="importButton">読み込む</button><button class="button" id="downloadButton">データ保存</button><button class="button primary" id="printButton">▤　印刷 / PDF</button></div>
   </header>
   <main class="shell">
     <div class="heading"><div><div class="eyebrow">ROUTE → TULIP ROADBOOK</div><h1>道のつながりを、ひとコマずつ。</h1><p>スタート・ゴールを設定すると、実際の道路の形からコマ地図を自動でつくります。</p></div><span class="area-chip">●　京都市・京都駅周辺</span></div>
