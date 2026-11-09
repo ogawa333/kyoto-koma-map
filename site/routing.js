@@ -173,7 +173,10 @@
       if(!Array.isArray(branch)||branch.length<2)return null;
       const cumulative=[0];
       for(let i=1;i<branch.length;i++)cumulative.push(cumulative.at(-1)+distance(branch[i-1],branch[i]));
-      if(cumulative.at(-1)<2)return null;
+      // A branch may end at another junction less than 2m away. Its bearing
+      // still distinguishes a right-hand T from a left-hand T. Only reject
+      // effectively zero-length geometry, not short but measurable roads.
+      if(cumulative.at(-1)<.01)return null;
       const directions=[8,20].map(at=>angle(bearing(frame.center,sample(branch,cumulative,Math.min(at,cumulative.at(-1))))-frame.heading));
       if(directions.some(x=>!Number.isFinite(x)))return null;
       signature.push(directions);
@@ -215,16 +218,24 @@
         for(let target=1;target<frames.length;target++){
           if(!keep[target])continue;
           for(let i=previous+1;i<target;i++)if(similarSignatures(signatures[i],signatures[target],frames[i].branches?.length,frames[target].branches?.length)){
-            keep[i]=true;reasons.set(i,`後続の「${frames[target].label||'表示'}」地点と形が似ているため表示`);changed=true;break;
+            keep[i]=true;reasons.set(i,{targetId:frames[target].id,label:frames[target].label||'表示'});changed=true;break;
           }
           if(changed)break;
           previous=target;
         }
       }while(changed);
     }
-    const selected=frames.map((f,i)=>({...f,retentionReason:reasons.get(i)})).filter((_,i)=>keep[i]);
-    return selected.map((f,i)=>({...f,number:i+1,fromPrevious:f.at-(i?selected[i-1].at:0)}));
+    const selected=frames.map((f,i)=>({...f,retentionReason:undefined,retentionTargetId:undefined,retentionTargetNumber:undefined,sourceIndex:i})).filter((_,i)=>keep[i]);
+    const numbers=new Map(selected.map((f,i)=>[f.id,i+1]));
+    return selected.map((f,i)=>{
+      const reason=reasons.get(f.sourceIndex),target=reason?numbers.get(reason.targetId):undefined;
+      const {sourceIndex,...frame}=f;
+      return {...frame,number:i+1,fromPrevious:f.at-(i?selected[i-1].at:0),
+        retentionTargetId:reason?.targetId,retentionTargetNumber:target,
+        retentionReason:reason?`コマ${String(target).padStart(3,'0')}（${reason.label}）と道路の形・枝道の左右が似ているため表示`:undefined};
+    });
   }
+
   function orderWaypoints(locations,random=Math.random) {
     if(locations.length<=2)return [...locations];
     const remaining=locations.slice(1,-1),ordered=[locations[0]],nearCount=Math.ceil(remaining.length/2);
