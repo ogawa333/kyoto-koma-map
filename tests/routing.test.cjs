@@ -113,3 +113,26 @@ test('retention reason names the final numbered target after insertions',()=>{
   assert.equal(selected[1].retentionTargetId,'target');assert.equal(selected[1].retentionTargetNumber,3);
   assert.match(selected[1].retentionReason,/コマ003/);
 });
+
+test('a parking aisle does not prevent clear main-road continuation',()=>{
+  const d=junction([[0,20],[20,0]]);d.ways[2].tags={highway:'service',service:'parking_aisle'};
+  const g=r.graph(d);assert.equal(r.continuation(g,[1,2,3],1),true);
+  assert.equal(r.continuation(g,[1,2,4],1),false);
+  assert.equal(r.walkable(d.ways[2].tags),false);
+});
+test('ambiguous parking forks and a straight parking branch stay visible',()=>{
+  const y=junction([[-12,20],[12,20]]);y.ways[2].tags={highway:'service',service:'parking_aisle'};
+  assert.equal(r.continuation(r.graph(y),[1,2,3],1),false);
+  const d=junction([[0,20],[20,0]]);d.ways[1].tags={highway:'service',service:'parking_aisle',foot:'yes'};
+  assert.equal(r.continuation(r.graph(d),[1,2,3],1),false);
+});
+test('private, forbidden, directional, driveway and signed branches keep diagrams',()=>{
+  for(const extra of [{access:'private'},{foot:'no'},{'oneway:foot':'-1'},{'foot:forward':'no'}]){
+    const d=junction([[0,20],[20,0]]);d.ways[2].tags={highway:'service',service:'parking_aisle',...extra};
+    assert.equal(r.continuation(r.graph(d),[1,2,3],1),false);
+  }
+  const d=junction([[0,20],[20,0]]);d.ways[2].tags={highway:'service',service:'driveway'};
+  assert.equal(r.continuation(r.graph(d),[1,2,3],1),false);
+  d.ways[2].tags.service='parking_aisle';d.nodes[1].tags={highway:'traffic_signals'};
+  assert.equal(r.continuation(r.graph(d),[1,2,3],1),false);
+});
