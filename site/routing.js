@@ -136,7 +136,7 @@
     return null;
   }
   // Only omit an unambiguous continuation; unknown physical conditions keep a diagram.
-  function continuation(g, ids, index) {
+  function continuation(g, ids, index, ignoreSignals=false) {
     if(index===0||index===ids.length-1||ids[index-1]===ids[index+1])return false;
     const id=ids[index],prev=ids[index-1],next=ids[index+1],center=g.nodes.get(id);
     const incoming=(g.visual.get(id)||[]).find(e=>e.to===prev);
@@ -150,7 +150,8 @@
       return !isParking(e)||/^(no|private|use_sidepath)$/.test(t.foot||'')||/^(no|private)$/.test(t.access||'')||t['oneway:foot']||t['foot:forward']==='no'||t['foot:backward']==='no';
     }))return false;
     if(isParking(incoming)||isParking(candidates.find(e=>e.to===next)))return false;
-    if(signOf(center)||candidates.some(e=>signOf(g.nodes.get(e.to))))return false;
+    const signs=[signOf(center),...candidates.map(e=>signOf(g.nodes.get(e.to)))].filter(Boolean);
+    if(signs.some(sign=>!ignoreSignals||sign.kind!=='signals'))return false;
     const approach=roadShape(g,id,prev,8).at(-1),heading=bearing(approach,center);
     let choices=candidates.map(e=>({...e,turn:Math.abs(angle(bearing(center,roadShape(g,id,e.to,8).at(-1))-heading))/rad}));
     // Prefer straight ahead only when it is clearly distinct from every other branch.
@@ -217,7 +218,8 @@
     return count===small.length;
   }
   function selectFrames(frames, mode='all', edits={}) {
-    const keep=frames.map((f,i)=>mode!=='reduced'||i===0||i===frames.length-1||!f.canOmit||(f.checkpoints||[]).length||Object.values(edits[f.id]||{}).some(v=>v&&typeof v==='object'?Object.keys(v).length:!!v));
+    const hasEdit=f=>Object.values(edits[f.id]||{}).some(v=>v&&typeof v==='object'?Object.keys(v).length:!!v);
+    const keep=frames.map((f,i)=>mode!=='reduced'||i===0||i===frames.length-1||!f.canOmit||(f.checkpoints||[]).length||hasEdit(f));
     const reasons=new Map(),signatures=frames.map(junctionSignature);
     if(mode==='reduced'){
       // Each insertion splits the interval. Restart until no omitted frame resembles
@@ -227,6 +229,10 @@
         changed=false;let previous=0;
         for(let target=1;target<frames.length;target++){
           if(!keep[target])continue;
+          // A straight signal frame is its own visible landmark, not a navigation
+          // decision requiring lookalike junctions to be restored. Keep the interval
+          // boundary here so earlier junctions are not compared beyond this signal.
+          if(frames[target].label==='直進'&&frames[target].retainedForStraightSignal&&!(frames[target].checkpoints||[]).length&&!hasEdit(frames[target])){previous=target;continue;}
           for(let i=previous+1;i<target;i++)if(similarSignatures(signatures[i],signatures[target],frames[i].branches?.length,frames[target].branches?.length)){
             keep[i]=true;reasons.set(i,{targetId:frames[target].id,label:frames[target].label||'表示'});changed=true;break;
           }
@@ -279,7 +285,9 @@
       if(e.at>0){routeIn.push(before);for(let j=0;j<points.length;j++)if(cumulative[j]>beforeAt&&cumulative[j]<e.at)routeIn.push(points[j]);routeIn.push(center);}
       if(e.at<total){routeOut.push(center);for(let j=0;j<points.length;j++)if(cumulative[j]>e.at&&cumulative[j]<afterAt)routeOut.push(points[j]);routeOut.push(after);}
       const occurrence=occurrences.get(ids[e.nodeIndex])||0;occurrences.set(ids[e.nodeIndex],occurrence+1);
-      return {id:`junction:${ids[e.nodeIndex]}:${occurrence}`,number:i+1,center:{lat:center.lat,lon:center.lon},routeIndex:e.nodeIndex,at:e.at,kind:'junction',isJunction:true,canOmit:!visits.some(v=>v.nodeIndex===e.nodeIndex)&&continuation(g,ids,e.nodeIndex),checkpoints:[],label:Math.abs(turn)<25?'直進':Math.abs(turn)>155?'折り返し':turn>0?'右へ進む':'左へ進む',heading,branches:(g.visual.get(ids[e.nodeIndex])||[]).map(edge=>roadShape(g,ids[e.nodeIndex],edge.to)),routeIn,routeOut,signs:[],landmark:null,landmarks:[],fromPrevious:e.at-(i?events[i-1].at:0)};
+      const atVisit=visits.some(v=>v.nodeIndex===e.nodeIndex),follows=continuation(g,ids,e.nodeIndex);
+      const retainedForStraightSignal=!atVisit&&Math.abs(turn)<25&&!follows&&continuation(g,ids,e.nodeIndex,true);
+      return {id:`junction:${ids[e.nodeIndex]}:${occurrence}`,number:i+1,center:{lat:center.lat,lon:center.lon},routeIndex:e.nodeIndex,at:e.at,kind:'junction',isJunction:true,canOmit:!atVisit&&follows,retainedForStraightSignal,checkpoints:[],label:Math.abs(turn)<25?'直進':Math.abs(turn)>155?'折り返し':turn>0?'右へ進む':'左へ進む',heading,branches:(g.visual.get(ids[e.nodeIndex])||[]).map(edge=>roadShape(g,ids[e.nodeIndex],edge.to)),routeIn,routeOut,signs:[],landmark:null,landmarks:[],fromPrevious:e.at-(i?events[i-1].at:0)};
     });
     const unassignedCheckpoints=[];
     for(const visit of visits.filter(v=>v.checkpoint)){
@@ -300,7 +308,7 @@
       }
     }
     for(const f of frames)f.landmark=f.landmarks[0]||null;
-    return {generationVersion:8,frames,distance:total,path:points.map(p=>({lat:p.lat,lon:p.lon})),unassignedCheckpoints};
+    return {generationVersion:9,frames,distance:total,path:points.map(p=>({lat:p.lat,lon:p.lon})),unassignedCheckpoints};
   }
   function generate(data, locations, options = {}) {
     if (locations.length < 2 || locations.some(p => !Number.isFinite(p.lat) || !Number.isFinite(p.lon))) throw new Error('スタートとゴールの地点を指定してください。');

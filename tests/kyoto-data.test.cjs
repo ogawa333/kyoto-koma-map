@@ -25,6 +25,7 @@ test('both Kyoto tail orders generate connected routes, retain CP5 and avoid amb
     assert.ok(selected.length<result.frames.length);let previous=0;
     for(let j=1;j<result.frames.length;j++){
       if(!keep.has(result.frames[j].id))continue;
+      if(result.frames[j].retainedForStraightSignal&&result.frames[j].label==='直進'&&!result.frames[j].checkpoints.length){previous=j;continue;}
       for(let i=previous+1;i<j;i++)assert.equal(engine.similarJunctions(result.frames[i],result.frames[j]),false);
       previous=j;
     }
@@ -60,4 +61,14 @@ test('former Kyoto frame 091 may be omitted while the Shiokoji route remains unc
   assert.equal(selected.some(f=>f.id===frame.id),false);
   assert.equal(engine.selectFrames(result.frames,'all').some(f=>f.id===frame.id),true);
   assert.equal(Math.round(result.distance),5776);
+});
+
+test('1766m straight signal remains visible without restoring earlier lookalikes for it',()=>{
+  for(const random of [()=>0,()=>.999]){
+    const result=engine.generate(data,engine.orderWaypoints(data.sampleLocations,random));
+    const id='junction:8288264257:0',signal=result.frames.find(f=>f.id===id);assert.ok(signal);
+    assert.equal(signal.label,'直進');assert.equal(signal.canOmit,false);assert.equal(signal.retainedForStraightSignal,true);
+    const selected=engine.selectFrames(result.frames,'reduced');assert.ok(selected.some(f=>f.id===id));
+    assert.equal(selected.some(f=>f.retentionTargetId===id),false);
+  }
 });
