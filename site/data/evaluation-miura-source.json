@@ -1,0 +1,36 @@
+{
+  "region": "三浦・三崎港周辺（本土側、城ヶ島を含まない）",
+  "attribution": "© OpenStreetMap contributors",
+  "source": "https://api.openstreetmap.org/api/0.6/map",
+  "sourceDate": "2026-11-03T14:20:05.415613+00:00",
+  "sourceRepository": "ogawa333/miura-koma-map",
+  "sourceRepositoryCommit": "85230813f0faab1c32d0827100b2a0f515a8ee98",
+  "sourceRepositoryFile": "data/miura-network.js",
+  "sourceFileSha256": "9bf6417b55af060fbd36fe0dd2917ff3e4d38925d42f37ca30b50260824be5c1",
+  "bounds": {
+    "south": 35.139,
+    "west": 139.605,
+    "north": 35.16,
+    "east": 139.645
+  },
+  "extraction": "Keep nodes within bounds; split ways at excluded nodes, retaining runs of at least two nodes. Keep in-bounds places and signs; context is empty.",
+  "extractSha256": "84166c0d07fba64b495aed1fa6d57e5ec22a4705afb83c3a57f1194e978dbab7",
+  "mergeMeters": 12,
+  "generationVersion": 9,
+  "ruleVersion": "kyoto-geometry-v3-signal-policy",
+  "sets": [
+    {
+      "file": "evaluation-set-04.json",
+      "id": "cbb5c4e3-75f2-40af-b7ca-c5ea65d647f8",
+      "seed": 45,
+      "pairs": 100
+    },
+    {
+      "file": "evaluation-set-05.json",
+      "id": "58037cac-de65-419a-8c4d-552290b8f7e4",
+      "seed": 46,
+      "pairs": 100
+    }
+  ],
+  "purpose": "Unanswered cross-region evaluation sets; not used for training."
+}
