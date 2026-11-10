@@ -23,7 +23,6 @@
   .choice small{font-size:11px;line-height:1.5;margin-top:3px}
   #answerForm>label{display:block;font-size:12px;margin-top:8px}
   #notes{font-size:12px;min-height:38px;height:38px;margin-top:4px;padding:6px;resize:vertical}
-  #saveAnswer{width:100%;min-height:38px;margin-top:8px}
   .timing-note{font-size:10px;line-height:1.5;margin:8px 0 0}
   #ruleResult{grid-column:1/-1;margin:0;padding:10px 14px}
   #summary{margin:10px 0;padding:10px 14px}
@@ -36,3 +35,5 @@
 .dataset-picker button{padding:8px 10px;font-size:12px}
 #activeSetStatus{color:#637267;font-size:11px}
 @media(max-width:650px){.dataset-picker select{flex:1}.dataset-picker #activeSetStatus{width:100%}}
+
+#autoSaveHint{margin:0 0 10px;line-height:1.6}
