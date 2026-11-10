@@ -27,6 +27,7 @@
   }
   function render(){
     const dataset=state.dataset;$('workspace').hidden=!dataset;$('exportData').disabled=!dataset;$('expandDataset').disabled=!dataset||dataset.pairs.length>=100;
+    $('settingsSummary').textContent='評価者・保存・JSON操作（'+state.evaluatorId+'）';
     $('evaluatorId').value=state.evaluatorId;$('role').value=state.role;$('onlyPending').checked=state.onlyPending;
     if(!dataset){$('sourceInfo').textContent='評価セットがありません。コマ地図を生成するか、評価JSONを読み込んでください。';return;}
     $('sourceInfo').textContent=dataset.source.courseName+' ／ '+dataset.pairs.length+'ペア'+(dataset.source.supplementalCourses?.length?'（補充コース'+dataset.source.supplementalCourses.length+'件を含む）':'')+' ／ 作成 '+new Date(dataset.createdAt).toLocaleString('ja-JP');
