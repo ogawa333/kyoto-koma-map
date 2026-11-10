@@ -3,14 +3,14 @@
 <body><main>
 <header><a href="index.html">← コマ地図メーカー</a><span>人による交差点評価</span></header>
 <h1>この交差点、見分けられる？</h1>
-<p>次のコマを頼りに歩いていると想像してください。手前の交差点が、次のコマとは<strong>違う場所だと区別できるか</strong>を答えます。道路の形だけを評価し、信号・写真・地名は表示しません。</p>
-<section class="panel" aria-label="評価セットと評価者">
+<p class="intro">次のコマを頼りに歩いていると想像してください。手前の交差点が、次のコマとは<strong>違う場所だと区別できるか</strong>を答えます。道路の形だけを評価し、信号・写真・地名は表示しません。</p>
+<details id="settingsPanel" class="panel"><summary id="settingsSummary">評価者・保存・JSON操作（必要なときに開く）</summary>
   <p id="sourceInfo"></p><p id="storageStatus" role="status"></p>
   <form id="identityForm"><label>評価者コード（実名不要）<input id="evaluatorId" maxlength="40" value="P001" required></label><label>評価者の立場<select id="role"><option value="participant">参加者</option><option value="parent">保護者</option><option value="child">子ども</option><option value="author">作成者</option></select></label><button type="submit">評価者を切替</button></form>
   <p class="small">別の人が回答する場合はコードを変えてください。同じコードの回答は修正として保存します。回答はこのブラウザだけに保存されます。</p>
   <div class="toolbar"><button id="newDataset" type="button">新しい100ペア評価セット</button><button id="expandDataset" type="button">回答を残して100ペアに増やす</button><button id="exportData" type="button">評価JSONを保存</button><label class="file-button">評価JSONを読み込む<input id="importData" type="file" accept="application/json,.json"></label></div>
   <p class="small">新規セットは100ペアです。足りない分は京都の別の訪問順のコースから補充し、同じ地点ペアは追加しません。元のコマ地図のルートは変更しません。</p><p class="small">未回答セットのJSONを配れば、別の端末でも同じ問題を評価できます。同じセットの異なる評価者の回答は統合でき、回答の競合時は取り込みを中止します。写真・Google APIキーは評価JSONに含めません。</p>
-</section>
+</details>
 <div id="message" role="status" aria-live="polite"></div>
 <section id="workspace" hidden>
   <div class="navigation"><button id="previous" type="button">← 前へ</button><span id="progress" role="status" aria-live="polite"></span><button id="next" type="button">回答せず次へ →</button></div>
@@ -23,7 +23,7 @@
       <label class="choice"><input type="radio" name="choice" value="borderline"><span><strong>ギリギリ区別できる</strong><small>微妙だが、形を見れば違うと判断できる → 間引いてよい</small></span></label>
       <label class="choice"><input type="radio" name="choice" value="indistinguishable"><span><strong>区別できない</strong><small>ここが次のコマの場所だと思いそう → コマを残す</small></span></label>
       <label class="choice"><input type="radio" name="choice" value="uncertain"><span><strong>判断保留</strong><small>判断に自信がない → 集計から除外し、実運用では残す</small></span></label>
-    </fieldset><label>判断の理由（任意）<textarea id="notes" maxlength="500" rows="2" placeholder="例：左の枝道の角度で区別できる"></textarea></label><button class="primary" id="saveAnswer" type="submit">回答を保存して次へ</button><p class="small">表示中の時間と、選択までの時間も記録します。別タブを見ている時間は含めません。図の比較であり、現地での見え方の評価は別途必要です。</p></form>
+    </fieldset><label>判断の理由（任意）<textarea id="notes" maxlength="500" rows="2" placeholder="例：左の枝道の角度で区別できる"></textarea></label><button class="primary" id="saveAnswer" type="submit">回答を保存して次へ</button><p class="small timing-note">表示中の時間と、選択までの時間も記録します。別タブを見ている時間は含めません。図の比較であり、現地での見え方の評価は別途必要です。</p></form>
     <details id="ruleResult" class="panel" hidden><summary>回答後の確認：現行ルールの判定</summary><p id="ruleText"></p><p class="small">この確認を開いた記録も残します。確認後の再回答は、初見の評価と分けて扱ってください。</p></details>
   </div>
   <details class="panel" id="summary"><summary>回答済み分の集計・現行ルールとの比較</summary><p>ペア単位・回答単位の比較です。判断保留は比較集計から除外し、人数間の多数決による正解には置き換えません。未回答・AIの精度は含みません。</p><div id="summaryData"></div></details>
