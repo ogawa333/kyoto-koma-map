@@ -2,13 +2,47 @@
   'use strict';
   const $=id=>document.getElementById(id),api=window.KomaEvaluation,KEY='kyoto-junction-evaluation-v1',COURSE='kyoto-komachizu-v1';
   let state={dataset:null,evaluatorId:'P001',role:'participant',currentPairId:null,onlyPending:false};
-  let busy=false,networkPromise=null;
+  const presetSets=[
+    {id:'50b2bef2-face-4e6a-9085-6a14026b5cde',label:'追加セット②（100問）',url:'data/evaluation-set-02.json'},
+    {id:'88924b4c-094f-4b42-925a-08aec0f6a121',label:'追加セット③（100問）',url:'data/evaluation-set-03.json'}
+  ];
+  let otherDatasets=[];
+  let busy=false,networkPromise=null,disabledBeforeBusy=new Map();
+  const storedDatasets=()=>[state.dataset,...otherDatasets].filter(Boolean);
+  const setLabel=dataset=>presetSets.find(p=>p.id===dataset.id)?.label||dataset.source.courseName;
+  function writeStorage(nextState=state,nextOthers=otherDatasets){
+    localStorage.setItem(KEY,JSON.stringify({...nextState,otherDatasets:nextOthers}));
+  }
+  function renderSetPicker(){
+    const datasets=storedDatasets(),options=new Map(presetSets.map(p=>[p.id,p.label]));
+    for(const dataset of datasets)if(!options.has(dataset.id))options.set(dataset.id,setLabel(dataset));
+    $('evaluationSet').replaceChildren(...[...options].map(([id,label])=>{
+      const option=document.createElement('option'),dataset=datasets.find(d=>d.id===id);
+      option.value=id;option.textContent=label+(dataset?' ・ 回答 '+dataset.responses.filter(r=>r.evaluatorId===state.evaluatorId).length+'/'+dataset.pairs.length:'');return option;
+    }));
+    $('evaluationSet').value=state.dataset?.id||presetSets[0].id;
+    $('activeSetStatus').textContent=state.dataset?'表示中：'+setLabel(state.dataset):'追加セットはここから開始できます。';
+  }
+  function activateDataset(incoming,discardChecked=false){
+    const prior=storedDatasets().find(d=>d.id===incoming.id);
+    const dataset=api.mergeDatasets(prior,incoming);
+    if(!discardChecked&&!discardDraft())return false;
+    const nextOthers=storedDatasets().filter(d=>d.id!==dataset.id);
+    const firstUnanswered=dataset.pairs.find(p=>!dataset.responses.some(r=>r.pairId===p.id&&r.evaluatorId===state.evaluatorId));
+    const nextState={...state,dataset,currentPairId:state.dataset?.id===dataset.id?state.currentPairId:firstUnanswered?.id||null,onlyPending:false};
+    // Write all sets atomically before replacing the active screen. On quota errors
+    // the previous answers and the draft remain available for export.
+    try{writeStorage(nextState,nextOthers);}catch{throw new Error('セットを切り替えるための保存容量が足りません。現在の回答は変更していません。評価JSONを保存し、空き容量のあるブラウザで追加セットを開いてください。');}
+    state=nextState;otherDatasets=nextOthers;unsaved=false;render();
+    $('storageStatus').textContent='このブラウザに保存済み';$('storageStatus').classList.remove('error');
+    return true;
+  }
   let dirty=false,unsaved=false,elapsed=0,started=performance.now(),active=!document.hidden,decision=null;
   const message=(text,error=false)=>{$('message').textContent=text;$('message').classList.toggle('error',error);};
   const elapsedNow=()=>Math.min(86400000,Math.round(elapsed+(active?performance.now()-started:0)));
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&active){elapsed+=performance.now()-started;active=false;}else if(!document.hidden&&!active){started=performance.now();active=true;}});
   function persist(){
-    try{localStorage.setItem(KEY,JSON.stringify(state));unsaved=false;$('storageStatus').textContent='このブラウザに保存済み';$('storageStatus').classList.remove('error');}
+    try{writeStorage();unsaved=false;$('storageStatus').textContent='このブラウザに保存済み';$('storageStatus').classList.remove('error');}
     catch{unsaved=true;$('storageStatus').textContent='自動保存できません。回答は画面内に保持しています。「評価JSONを保存」で書き出してください。';$('storageStatus').classList.add('error');}
   }
   function discardDraft(){return !dirty||confirm('この回答はまだ保存していません。移動してよいですか？');}
@@ -26,10 +60,11 @@
     const note=document.createElement('p');note.className='small';note.textContent='少ない回答数で精度を断定しないでください。複数の評価者の回答はJSONに個別に残ります。';$('summaryData').replaceChildren(table,note);
   }
   function render(){
+    renderSetPicker();
     const dataset=state.dataset;$('workspace').hidden=!dataset;$('exportData').disabled=!dataset;$('expandDataset').disabled=!dataset||dataset.pairs.length>=100;
     $('settingsSummary').textContent='評価者・保存・JSON操作（'+state.evaluatorId+'）';
     $('evaluatorId').value=state.evaluatorId;$('role').value=state.role;$('onlyPending').checked=state.onlyPending;
-    if(!dataset){$('sourceInfo').textContent='評価セットがありません。コマ地図を生成するか、評価JSONを読み込んでください。';return;}
+    if(!dataset){$('sourceInfo').textContent='評価セットがありません。上の選択欄から追加セット②・③を開くか、評価JSONを読み込んでください。';return;}
     $('sourceInfo').textContent=dataset.source.courseName+' ／ '+dataset.pairs.length+'ペア'+(dataset.source.supplementalCourses?.length?'（補充コース'+dataset.source.supplementalCourses.length+'件を含む）':'')+' ／ 作成 '+new Date(dataset.createdAt).toLocaleString('ja-JP');
     const list=orderedPairs();if(!list.some(p=>p.id===state.currentPairId))state.currentPairId=list[0]?.id||null;
     const pair=currentPair(),index=list.findIndex(p=>p.id===state.currentPairId),answered=dataset.responses.filter(r=>r.evaluatorId===state.evaluatorId).length;
@@ -55,7 +90,26 @@
     if(!discardDraft())return;const list=orderedPairs(),index=list.findIndex(p=>p.id===state.currentPairId),next=list[index+delta];if(!next)return;
     state.currentPairId=next.id;render();persist();focusComparison();
   }
-  function setBusy(value){busy=value;for(const el of document.querySelectorAll('button,input,select,textarea'))el.disabled=value;}
+  function setBusy(value){
+    busy=value;
+    if(value){disabledBeforeBusy=new Map();for(const el of document.querySelectorAll('button,input,select,textarea')){disabledBeforeBusy.set(el,el.disabled);el.disabled=true;}}
+    else{for(const [el,disabled] of disabledBeforeBusy)el.disabled=disabled;disabledBeforeBusy.clear();}
+  }
+  $('openEvaluationSet').onclick=async()=>{
+    if(busy)return;
+    const id=$('evaluationSet').value,saved=storedDatasets().find(d=>d.id===id),preset=presetSets.find(p=>p.id===id);
+    try{
+      if(saved){if(activateDataset(saved))message(setLabel(saved)+'の回答を復元しました。');return;}
+      if(!preset)throw new Error('評価セットを選んでください。');
+      setBusy(true);message(preset.label+'を読み込んでいます…');
+      const response=await fetch(preset.url);
+      if(!response.ok)throw new Error('追加セットを読み込めません。接続を確認して再試行してください。');
+      const dataset=api.validateDataset(await response.json());
+      if(dataset.id!==preset.id||dataset.pairs.length!==100||dataset.responses.length)throw new Error('追加セットの内容を確認できません。');
+      setBusy(false);
+      if(activateDataset(dataset))message(preset.label+'を開きました。回答はセットごとに保存され、切り替えても再開できます。');
+    }catch(error){if(busy)setBusy(false);message(error.message,true);}
+  };
   function loadNetwork(){
     if(window.KYOTO_NETWORK?.sampleLocations)return Promise.resolve(window.KYOTO_NETWORK);
     if(networkPromise)return networkPromise;
@@ -101,10 +155,8 @@
       const course=expand?null:JSON.parse(localStorage.getItem(COURSE)||'null');
       const base=expand?state.dataset:api.sizeUnansweredDataset(api.buildDataset(course,{id:crypto.randomUUID()}),100);
       if(!discardDraft())return;
-      if(!expand&&state.dataset?.responses.length&&!confirm('新しい評価セットに切り替えます。前の回答を残すには、先に評価JSONを保存してください。切り替えてよいですか？'))return;
       setBusy(true);preparationStarted=true;const dataset=await fillTo100(base);
-      state.dataset=dataset;if(!expand){state.currentPairId=null;state.onlyPending=false;}
-      setBusy(false);render();persist();message(expand?'回答と問題IDを保持して100ペアに増やしました。':'100ペアの評価セットを作成しました。判定は回答するまで表示しません。');
+      setBusy(false);activateDataset(dataset,true);message(expand?'回答と問題IDを保持して100ペアに増やしました。':'100ペアの評価セットを作成しました。判定は回答するまで表示しません。');
     }catch(error){if(preparationStarted){setBusy(false);render();}message(error.message,true);}
   }
   $('identityForm').onsubmit=event=>{
@@ -140,16 +192,20 @@
       if(file.size>15*1024*1024)throw new Error('評価JSONは15MB以下にしてください。');
       const incoming=api.validateDataset(JSON.parse(await file.text()));
       if(busy)throw new Error('100ペアの準備が終わってから読み込んでください。');
-      const merged=api.mergeDatasets(state.dataset,incoming);
-      if(!discardDraft())return;
-      if(state.dataset&&state.dataset.id!==incoming.id&&state.dataset.responses.length&&!confirm('別の評価セットに切り替えます。現在の回答は書き出し済みですか？'))return;
-      state.dataset=merged;state.currentPairId=null;state.onlyPending=false;render();persist();message('評価JSONを読み込みました。同じセットの異なる評価者の回答は統合しています。');
+      if(activateDataset(incoming))message('評価JSONを読み込みました。セットごとの回答を保持し、同じセットの異なる評価者の回答は統合しています。');
     }catch(error){message(error.message,true);}
   };
   window.addEventListener('beforeunload',event=>{if(dirty||unsaved){event.preventDefault();event.returnValue='';}});
   try{
     const saved=JSON.parse(localStorage.getItem(KEY)||'null');
-    if(saved?.dataset){api.validateDataset(saved.dataset);state={dataset:saved.dataset,evaluatorId:typeof saved.evaluatorId==='string'&&saved.evaluatorId.length<=40?saved.evaluatorId:'P001',role:api.ROLES.includes(saved.role)?saved.role:'participant',currentPairId:saved.currentPairId,onlyPending:!!saved.onlyPending};render();message('前回の評価セットと回答を復元しました。');$('storageStatus').textContent='このブラウザに保存済み';}
+    if(saved?.dataset){api.validateDataset(saved.dataset);
+      if(saved.otherDatasets!==undefined){
+        if(!Array.isArray(saved.otherDatasets))throw new Error('保存セットの一覧が正しくありません。');
+        const seen=new Set([saved.dataset.id]);
+        for(const dataset of saved.otherDatasets){api.validateDataset(dataset);if(seen.has(dataset.id))throw new Error('保存セットが重複しています。');seen.add(dataset.id);}
+        otherDatasets=saved.otherDatasets;
+      }
+      state={dataset:saved.dataset,evaluatorId:typeof saved.evaluatorId==='string'&&saved.evaluatorId.length<=40?saved.evaluatorId:'P001',role:api.ROLES.includes(saved.role)?saved.role:'participant',currentPairId:saved.currentPairId,onlyPending:!!saved.onlyPending};render();message('前回の評価セットと回答を復元しました。');$('storageStatus').textContent='このブラウザに保存済み';}
     else{render();if(localStorage.getItem(COURSE))buildFromCourse();}
   }catch(error){render();message('保存済みデータを復元できませんでした。評価JSONから読み込めます。'+error.message,true);}
 })();

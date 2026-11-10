@@ -4,6 +4,10 @@
 <header><a href="index.html">← コマ地図メーカー</a><span>人による交差点評価</span></header>
 <h1>この交差点、見分けられる？</h1>
 <p class="intro">次のコマを頼りに歩いていると想像してください。手前の交差点が、次のコマとは<strong>違う場所だと区別できるか</strong>を答えます。道路の形だけを評価し、信号・写真・地名は表示しません。</p>
+<section class="dataset-picker" aria-label="評価セットの選択">
+  <label for="evaluationSet">評価セット</label><select id="evaluationSet"></select><button id="openEvaluationSet" type="button">選んだセットを開く</button>
+  <span id="activeSetStatus" role="status"></span>
+</section>
 <details id="settingsPanel" class="panel"><summary id="settingsSummary">評価者・保存・JSON操作（必要なときに開く）</summary>
   <p id="sourceInfo"></p><p id="storageStatus" role="status"></p>
   <form id="identityForm"><label>評価者コード（実名不要）<input id="evaluatorId" maxlength="40" value="P001" required></label><label>評価者の立場<select id="role"><option value="participant">参加者</option><option value="parent">保護者</option><option value="child">子ども</option><option value="author">作成者</option></select></label><button type="submit">評価者を切替</button></form>
