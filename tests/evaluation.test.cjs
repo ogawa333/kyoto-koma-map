@@ -63,3 +63,36 @@ test('physical groups are stable across repeat visits to the same OSM node',()=>
   const c=course();c.result.allFrames[2].id='junction:1:1';const d=build(c);
   assert.equal(d.pairs[0].splitGroups[0],d.pairs[1].splitGroups[0]);
 });
+function pool(count){
+  const d=build(),template=d.pairs[0];
+  d.id='supplement-pool';d.pairs=Array.from({length:count},(_,i)=>({...structuredClone(template),id:'pool-'+i,splitGroups:['osm-node:'+(1000+i),'osm-node:9999'],context:{...template.context,candidateId:'junction:'+(1000+i)+':0'}}));
+  return d;
+}
+test('new sets take at most 100 distinct physical pairs without altering the source pool',()=>{
+  const source=pool(150),d=api.sizeUnansweredDataset(source,100);
+  assert.equal(d.pairs.length,100);assert.equal(source.pairs.length,150);assert.equal(d.source.requestedPairs,100);
+  assert.equal(new Set(d.pairs.map(p=>JSON.stringify(p.splitGroups))).size,100);
+  assert.throws(()=>api.sizeUnansweredDataset(answer(source,0,'clear'),100),/回答済み/);
+});
+test('expansion to 100 retains original pair IDs and answers, deduplicates additions and records origins',()=>{
+  const original=answer(build(),0,'borderline');original.version=1;
+  const supplement=pool(150);supplement.pairs.unshift(structuredClone(original.pairs[0]));
+  const d=api.extendDataset(original,supplement,{count:100,courseId:'route-A',name:'補充用コース'});
+  assert.equal(d.version,2);assert.equal(d.pairs.length,100);assert.deepEqual(d.pairs.slice(0,2),original.pairs);assert.deepEqual(d.responses,original.responses);
+  assert.equal(original.pairs.length,2);assert.equal(new Set(d.pairs.map(p=>JSON.stringify(p.splitGroups))).size,100);
+  assert.equal(d.source.supplementalCourses.length,1);assert.ok(d.pairs.slice(2).every(p=>p.context.courseId==='route-A'));
+  api.validateDataset(api.exportDataset(d));assert.equal(api.extendDataset(d,pool(3),{count:100}),d);
+});
+test('old shorter backups merge into expanded sets without removing questions or other evaluators',()=>{
+  const original=answer(build(),0,'borderline');original.version=1;
+  const expanded=api.extendDataset(original,pool(150),{count:100,courseId:'route-A',name:'補充'});
+  const older=answer(build(),1,'clear','P002');older.version=1;
+  for(const merged of [api.mergeDatasets(expanded,api.exportDataset(older)),api.mergeDatasets(older,api.exportDataset(expanded))]){
+    assert.equal(merged.pairs.length,100);assert.equal(merged.responses.length,2);assert.equal(merged.version,2);api.validateDataset(merged);
+  }
+});
+test('insufficient or incompatible pools never pad duplicate questions',()=>{
+  const original=build();assert.equal(api.extendDataset(original,build(),{count:100,courseId:'same',name:'同じ問題'}),original);
+  const incompatible=pool(100);incompatible.source.ruleVersion='different';assert.throws(()=>api.extendDataset(original,incompatible,{count:100,courseId:'bad',name:'別版'}),/版が異なる/);
+  const invalid=api.extendDataset(original,pool(150),{count:100,courseId:'route-A',name:'補充'});invalid.source.supplementalCourses=[];assert.throws(()=>api.validateDataset(invalid),/出典/);
+});

@@ -3,7 +3,7 @@
   else root.KomaEvaluation=factory(root.KomaRouting);
 })(typeof window==='undefined'?globalThis:window,function(engine){
   'use strict';
-  const FORMAT='kyoto-junction-evaluation',VERSION=1;
+  const FORMAT='kyoto-junction-evaluation',VERSION=2;
   const CHOICES={clear:{label:'明確に区別できる',trainingLabel:'omit',recommendation:'omit'},borderline:{label:'ギリギリ区別できる',trainingLabel:'omit',recommendation:'omit'},indistinguishable:{label:'区別できない',trainingLabel:'keep',recommendation:'keep'},uncertain:{label:'判断保留',trainingLabel:null,recommendation:'keep'}};
   const ROLES=['participant','parent','child','author'];
   const isChoice=value=>Object.hasOwn(CHOICES,value);
@@ -41,16 +41,24 @@
   }
   function responseKey(response){return JSON.stringify([response.evaluatorId,response.pairId]);}
   function validateDataset(d){
-    if(d?.format!==FORMAT||d.version!==VERSION||!text(d.id,200)||!Number.isFinite(Date.parse(d.createdAt))||!d.source||!text(d.source.courseName,200)||!text(d.source.ruleVersion,200)||!Array.isArray(d.pairs)||!d.pairs.length||d.pairs.length>3000||!Array.isArray(d.responses)||d.responses.length>60000)throw new Error('評価データの形式が正しくありません。');
+    if(d?.format!==FORMAT||![1,VERSION].includes(d.version)||!text(d.id,200)||!Number.isFinite(Date.parse(d.createdAt))||!d.source||!text(d.source.courseName,200)||!text(d.source.ruleVersion,200)||!Array.isArray(d.pairs)||!d.pairs.length||d.pairs.length>3000||!Array.isArray(d.responses)||d.responses.length>60000)throw new Error('評価データの形式が正しくありません。');
     const only=(value,keys)=>value&&Object.keys(value).every(k=>keys.includes(k));
-    if(!only(d,['format','version','id','createdAt','source','pairs','responses','exportedAt','summary'])||!only(d.source,['courseName','sourceDate','generationVersion','ruleVersion','sampling','evaluationMode','ruleThresholdDegrees']))throw new Error('評価セットに不要な情報が含まれています。');
+    if(!only(d,['format','version','id','createdAt','source','pairs','responses','exportedAt','summary'])||!only(d.source,['courseName','sourceDate','generationVersion','ruleVersion','sampling','evaluationMode','ruleThresholdDegrees','requestedPairs','supplementalCourses']))throw new Error('評価セットに不要な情報が含まれています。');
     if(d.source.evaluationMode!=='diagram'||d.source.sampling!=='all-omittable-before-next-mandatory-frame'||!Number.isInteger(d.source.generationVersion)||d.source.ruleThresholdDegrees!==20||(d.source.sourceDate!==null&&!Number.isFinite(Date.parse(d.source.sourceDate))))throw new Error('評価セットの作成条件が正しくありません。');
+    if(d.source.requestedPairs!==undefined&&(!Number.isInteger(d.source.requestedPairs)||d.source.requestedPairs<1||d.source.requestedPairs>3000))throw new Error('評価件数が正しくありません。');
+    const courses=d.source.supplementalCourses||[],courseIds=new Set();
+    if(!Array.isArray(courses)||courses.length>40)throw new Error('補充コースの情報が正しくありません。');
+    for(const course of courses){
+      if(!only(course,['id','name','sourceDate','generationVersion','ruleVersion'])||!text(course.id,200)||courseIds.has(course.id)||!text(course.name,200)||!Number.isInteger(course.generationVersion)||!text(course.ruleVersion,200)||(course.sourceDate!==null&&!Number.isFinite(Date.parse(course.sourceDate))))throw new Error('補充コースの情報が正しくありません。');
+      courseIds.add(course.id);
+    }
     const ids=new Set();
     for(const p of d.pairs){
       if(!text(p.id,600)||ids.has(p.id)||!frameValid(p.modelInput?.candidate)||!frameValid(p.modelInput?.target,true)||!['keep','omit'].includes(p.rulePrediction)||!Array.isArray(p.splitGroups)||p.splitGroups.length!==2||!p.splitGroups.every(g=>text(g,200))||!p.context||!text(p.context.candidateId,200)||!text(p.context.targetId,200)||!Number.isFinite(p.context.candidateAt)||!Number.isFinite(p.context.targetAt))throw new Error('交差点ペアのデータが正しくありません。');
       // Prevent imported photos, keys and candidate answers from entering the dataset.
-      if(!only(p,['id','modelInput','rulePrediction','splitGroups','context'])||!only(p.modelInput,['candidate','target'])||!only(p.context,['candidateId','targetId','candidateAt','targetAt','candidateAllNumber','targetAllNumber'])||canonical(p.modelInput.target)!==canonical(modelFrame(p.modelInput.target,true)))throw new Error('交差点ペアに不要な情報が含まれています。');
+      if(!only(p,['id','modelInput','rulePrediction','splitGroups','context'])||!only(p.modelInput,['candidate','target'])||!only(p.context,['candidateId','targetId','candidateAt','targetAt','candidateAllNumber','targetAllNumber','courseId'])||canonical(p.modelInput.target)!==canonical(modelFrame(p.modelInput.target,true)))throw new Error('交差点ペアに不要な情報が含まれています。');
       if(canonical(p.modelInput.candidate)!==canonical(modelFrame(p.modelInput.candidate)))throw new Error('候補交差点に正解ルートなどの不要な情報が含まれています。');
+      if(p.context.courseId!==undefined&&!courseIds.has(p.context.courseId))throw new Error('比較ペアの出典コースが見つかりません。');
       ids.add(p.id);
     }
     const keys=new Set();
@@ -87,10 +95,54 @@
     return {...d,responses:d.responses.map(r=>({...r,trainingLabel:CHOICES[r.choice].trainingLabel,retentionRecommendation:CHOICES[r.choice].recommendation,blindAtDecision:!r.ruleViewedAt||Date.parse(r.updatedAt)<Date.parse(r.ruleViewedAt)})),exportedAt:new Date().toISOString(),summary:summary(d)};
   }
   function canonical(value){if(Array.isArray(value))return '['+value.map(canonical).join(',')+']';if(value&&typeof value==='object')return '{'+Object.keys(value).sort().map(k=>JSON.stringify(k)+':'+canonical(value[k])).join(',')+'}';return JSON.stringify(value);}
+  function physicalPairKey(pair){return JSON.stringify(pair.splitGroups);}
+  function sizeUnansweredDataset(dataset,count=100){
+    validateDataset(dataset);
+    if(dataset.responses.length)throw new Error('回答済みセットの問題を削除することはできません。追加を使ってください。');
+    if(!Number.isInteger(count)||count<1||count>3000)throw new Error('評価件数が正しくありません。');
+    const unique=[...new Map(dataset.pairs.map(p=>[physicalPairKey(p),p])).values()];
+    const pairs=unique.length<=count?unique:Array.from({length:count},(_,i)=>unique[Math.floor(i*unique.length/count)]);
+    return validateDataset({...dataset,version:VERSION,source:{...dataset.source,requestedPairs:count},pairs});
+  }
+  function extendDataset(dataset,supplement,{count=100,courseId,name}={}){
+    validateDataset(dataset);validateDataset(supplement);
+    if(!Number.isInteger(count)||count<1||count>3000)throw new Error('評価件数が正しくありません。');
+    if(dataset.pairs.length>=count)return dataset;
+    if(dataset.source.ruleVersion!==supplement.source.ruleVersion)throw new Error('基準ルールの版が異なるため補充できません。');
+    if(!text(courseId,200)||!text(name,200))throw new Error('補充コースの情報が必要です。');
+    const seen=new Set(dataset.pairs.map(physicalPairKey)),pairs=[...dataset.pairs];
+    // Evenly traverse the supplementary route rather than taking only its start.
+    const pool=supplement.pairs,needed=count-pairs.length;
+    const indices=Array.from({length:Math.min(needed,pool.length)},(_,i)=>Math.floor(i*pool.length/Math.min(needed,pool.length)));
+    const ordered=[...new Set([...indices,...pool.map((_,i)=>i)])];
+    for(const index of ordered){
+      const p=pool[index],key=physicalPairKey(p);if(seen.has(key))continue;
+      seen.add(key);pairs.push({...p,id:dataset.id+':extra:'+p.splitGroups.join('|'),context:{...p.context,courseId}});
+      if(pairs.length>=count)break;
+    }
+    if(pairs.length===dataset.pairs.length)return dataset;
+    const courses=[...(dataset.source.supplementalCourses||[])];
+    const metadata={id:courseId,name,sourceDate:supplement.source.sourceDate,generationVersion:supplement.source.generationVersion,ruleVersion:supplement.source.ruleVersion};
+    const prior=courses.find(c=>c.id===courseId);
+    if(prior&&canonical(prior)!==canonical(metadata))throw new Error('補充コースIDが競合しています。');
+    if(!prior)courses.push(metadata);
+    return validateDataset({...dataset,version:VERSION,source:{...dataset.source,requestedPairs:count,supplementalCourses:courses},pairs});
+  }
   function mergeDatasets(current,incoming){
     validateDataset(incoming);if(!current||current.id!==incoming.id)return incoming;
     validateDataset(current);
-    if(canonical(current.pairs)!==canonical(incoming.pairs)||canonical(current.source)!==canonical(incoming.source))throw new Error('同じ評価セットIDですが交差点データが異なります。');
+    const primary=s=>{const {requestedPairs,supplementalCourses,...base}=s;return base;};
+    if(canonical(primary(current.source))!==canonical(primary(incoming.source)))throw new Error('同じ評価セットIDですが作成条件が異なります。');
+    const pairs=new Map(current.pairs.map(p=>[p.id,p]));
+    for(const p of incoming.pairs){
+      if(pairs.has(p.id)&&canonical(pairs.get(p.id))!==canonical(p))throw new Error('同じ評価セットIDですが交差点データが異なります。');
+      if(!pairs.has(p.id))pairs.set(p.id,p);
+    }
+    const courses=new Map((current.source.supplementalCourses||[]).map(c=>[c.id,c]));
+    for(const c of incoming.source.supplementalCourses||[]){
+      if(courses.has(c.id)&&canonical(courses.get(c.id))!==canonical(c))throw new Error('補充コースIDが競合しています。');
+      courses.set(c.id,c);
+    }
     const responses=new Map(current.responses.map(r=>[responseKey(r),r]));
     for(const r of incoming.responses){
       const existing=responses.get(responseKey(r));
@@ -98,7 +150,8 @@
       if(existing&&canonical(semantic(existing))!==canonical(semantic(r)))throw new Error('同じ評価者・ペアの回答が競合しています。現在の回答は変更していません。');
       if(!existing)responses.set(responseKey(r),r);
     }
-    return {...current,responses:[...responses.values()]};
+    const requestedPairs=Math.max(current.source.requestedPairs||0,incoming.source.requestedPairs||0);
+    return validateDataset({...current,version:Math.max(current.version,incoming.version),source:{...current.source,...(requestedPairs?{requestedPairs}:{}),...(courses.size?{supplementalCourses:[...courses.values()]}:{})},pairs:[...pairs.values()],responses:[...responses.values()]});
   }
-  return {FORMAT,VERSION,CHOICES,ROLES,buildDataset,validateDataset,saveResponse,summary,exportDataset,mergeDatasets};
+  return {FORMAT,VERSION,CHOICES,ROLES,buildDataset,validateDataset,saveResponse,summary,exportDataset,mergeDatasets,sizeUnansweredDataset,extendDataset};
 });
