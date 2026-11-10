@@ -5,13 +5,13 @@ const crypto = require('node:crypto');
 const api = require('../site/evaluation-core.js');
 const engine = require('../site/routing.js');
 let network;
-function makeSet({exclude=[], count=100, seed=43, mergeMeters=12, maxRoutes=40}={}) {
-  if (!network) {
+function makeSet({exclude=[], count=100, seed=43, mergeMeters=12, maxRoutes=40, networkData=null, regionName='京都'}={}) {
+  if (!networkData && !network) {
     const sandbox = {window:{}};
     require('node:vm').runInNewContext(fs.readFileSync(require.resolve('../site/data/kyoto-network.js'),'utf8'),sandbox);
     network = sandbox.window.KYOTO_NETWORK;
   }
-  const data = network;
+  const data = networkData || network;
   const excludedGroups = new Set(), excludedCenters = [];
   for (const d of exclude) {
     api.validateDataset(d);
@@ -30,7 +30,7 @@ function makeSet({exclude=[], count=100, seed=43, mergeMeters=12, maxRoutes=40}=
     let sample;
     try {
       const result = engine.generate(data,locations);
-      sample = api.buildDataset({result:{...result,allFrames:result.frames,name:'京都・追加評価セット（seed '+seed+'）'},edits:{}},{id:id+':route:'+route});
+      sample = api.buildDataset({result:{...result,allFrames:result.frames,name:regionName+'・追加評価セット（seed '+seed+'）'},edits:{}},{id:id+':route:'+route});
     } catch (error) {
       if (/道|スタート|評価可能/.test(error.message)) continue;
       throw error;
@@ -47,7 +47,7 @@ function makeSet({exclude=[], count=100, seed=43, mergeMeters=12, maxRoutes=40}=
       pairs.push({...p,id:id+':pair:'+pairs.length,context:{...p.context,courseId}});
       if (pairs.length>=count) break;
     }
-    if (added) courses.push({id:courseId,name:'追加評価ルート '+(route+1),sourceDate:sample.source.sourceDate,generationVersion:sample.source.generationVersion,ruleVersion:sample.source.ruleVersion});
+    if (added) courses.push({id:courseId,name:(networkData?regionName+'・':'')+'追加評価ルート '+(route+1),sourceDate:sample.source.sourceDate,generationVersion:sample.source.generationVersion,ruleVersion:sample.source.ruleVersion});
   }
   if (pairs.length<count) throw Error('重複しない問題が'+pairs.length+'問しかありません。別エリアの道路データ・ルートで集めてください。既存の除外条件は緩めません。');
   return api.validateDataset({...base,id,pairs,responses:[],source:{...base.source,requestedPairs:count,supplementalCourses:courses}});
@@ -60,6 +60,8 @@ if (require.main === module) {
       if(!value) throw Error('オプションに値が必要です: '+flag);
       if(flag==='--exclude') options.exclude.push(JSON.parse(fs.readFileSync(value,'utf8')));
       else if(flag==='--output') output=value;
+      else if(flag==='--network-json') options.networkData=JSON.parse(fs.readFileSync(value,'utf8'));
+      else if(flag==='--region-name') options.regionName=value;
       else if(flag==='--seed') options.seed=Number(value);
       else if(flag==='--count') options.count=Number(value);
       else throw Error('Unknown option: '+flag);

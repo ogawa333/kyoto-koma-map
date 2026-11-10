@@ -37,8 +37,21 @@ async function choose(page,id){await page.locator('#evaluationSet').selectOption
  p.once('dialog',d=>d.accept());await p.locator('#openEvaluationSet').click();assert.match(await p.locator('#message').innerText(),/保存容量/);
  assert.equal((await saved(p)).dataset.id,two);assert.equal(await p.locator('#notes').inputValue(),'入力途中');
  await p.evaluate(()=>Storage.prototype.setItem=window.originalSetItem);await p.locator('#notes').fill('');await p.locator('[name=choice][value=clear]').check();await p.locator('#saveAnswer').click();
+ // Miura presets load directly, save answers, and resume without changing Kyoto answers.
+ const fourth=JSON.parse(fs.readFileSync(root+'/site/data/evaluation-set-04.json'));
+ const fifth=JSON.parse(fs.readFileSync(root+'/site/data/evaluation-set-05.json'));
+ await choose(p,fourth.id);assert.match(await p.locator('#activeSetStatus').innerText(),/④.*三浦/);
+ assert.equal((await saved(p)).dataset.pairs.length,100);
+ assert((await saved(p)).dataset.pairs.every(pair=>pair.modelInput.candidate.center.lon>139));
+ await p.locator('[name=choice][value=borderline]').check();await p.locator('#saveAnswer').click();
+ await choose(p,fifth.id);assert.match(await p.locator('#activeSetStatus').innerText(),/⑤.*三浦/);
+ await p.locator('[name=choice][value=indistinguishable]').check();await p.locator('#saveAnswer').click();
+ await p.reload();await choose(p,fourth.id);assert.equal((await saved(p)).dataset.responses[0].choice,'borderline');
+ await choose(p,fifth.id);assert.equal((await saved(p)).dataset.responses[0].choice,'indistinguishable');
+ console.log('PASS Miura sets IV/V load, save, switch and reload');
  // Archived presets resume even when the preset download fails.
  await p.route('**/data/evaluation-set-*.json',route=>route.abort());await choose(p,three);assert.equal((await saved(p)).dataset.responses.length,1);
+ await p.locator('#settingsPanel').evaluate(e=>e.open=true);
  const downloadPromise=p.waitForEvent('download');await p.locator('#exportData').click();const download=await downloadPromise;
  const exported=api.validateDataset(JSON.parse(fs.readFileSync(await download.path())));assert.equal(exported.id,three);assert.equal(exported.responses.length,1);
  await p.setViewportSize({width:390,height:844});await p.evaluate(()=>scrollTo(0,0));assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert(await p.locator('#openEvaluationSet').isVisible());
