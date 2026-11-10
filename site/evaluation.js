@@ -168,17 +168,32 @@
   };
   $('previous').onclick=()=>move(-1);$('next').onclick=()=>move(1);$('newDataset').onclick=()=>buildFromCourse(false);$('expandDataset').onclick=()=>buildFromCourse(true);
   $('onlyPending').onchange=()=>{if(!discardDraft()){$('onlyPending').checked=state.onlyPending;return;}state.onlyPending=$('onlyPending').checked;state.currentPairId=null;render();persist();};
-  for(const input of document.querySelectorAll('[name=choice]'))input.onchange=()=>{decision=elapsedNow();dirty=true;};
+  for(const input of document.querySelectorAll('[name=choice]'))input.onclick=event=>{
+    // A double click belongs to one answer, even if the next diagram is already visible.
+    if(event.detail>1){event.preventDefault();return;}
+    decision=elapsedNow();saveSelectedAnswer(input.value);
+  };
   $('notes').oninput=()=>{dirty=true;};
-  $('answerForm').onsubmit=event=>{
-    event.preventDefault();const pair=currentPair(),choice=document.querySelector('[name=choice]:checked')?.value;if(!pair||!choice)return;
+  $('answerForm').onsubmit=event=>event.preventDefault();
+  function saveSelectedAnswer(choice){
+    const pair=currentPair();if(busy||!pair||!api.CHOICES[choice])return;
     try{
       const list=orderedPairs(),index=list.findIndex(p=>p.id===pair.id),next=list[index+1]?.id;
       const old=answerFor(pair.id),now=elapsedNow();
-      state.dataset=api.saveResponse(state.dataset,{pairId:pair.id,evaluatorId:state.evaluatorId,role:state.role,choice,notes:$('notes').value.trim(),activeViewMs:now,decisionMs:Math.min(decision??now,now),updatedAt:new Date().toISOString(),...(old?.ruleViewedAt?{ruleViewedAt:old.ruleViewedAt}:{})});
-      dirty=false;state.currentPairId=next||pair.id;render();persist();focusComparison();message(next?'回答を記録しました。': '回答を記録しました。最後のペアです。JSONを保存して、回答を持ち出せます。');
+      const dataset=api.saveResponse(state.dataset,{pairId:pair.id,evaluatorId:state.evaluatorId,role:state.role,choice,notes:$('notes').value.trim(),activeViewMs:now,decisionMs:Math.min(decision??now,now),updatedAt:new Date().toISOString(),...(old?.ruleViewedAt?{ruleViewedAt:old.ruleViewedAt}:{})});
+      const nextState={...state,dataset,currentPairId:next||pair.id};
+      // Advance only after the answer and all archived sets are durably stored.
+      try{writeStorage(nextState);}catch{
+        state.dataset=dataset;dirty=false;unsaved=true;
+        $('storageStatus').textContent='自動保存できません。回答は画面内に保持しています。「評価JSONを保存」で書き出してください。';
+        $('storageStatus').classList.add('error');
+        message('保存できないため次へ進みません。回答は画面内に保持しています。「評価JSONを保存」で退避してください。',true);return;
+      }
+      state=nextState;dirty=false;unsaved=false;render();
+      $('storageStatus').textContent='このブラウザに保存済み';$('storageStatus').classList.remove('error');
+      focusComparison();message(next?'回答を自動保存しました。次のペアです。':'回答を自動保存しました。最後のペアです。「評価JSONを保存」で書き出せます。');
     }catch(error){message(error.message,true);}
-  };
+  }
   $('ruleResult').addEventListener('toggle',()=>{
     if(!$('ruleResult').open||$('ruleResult').hidden)return;const pair=currentPair(),answer=pair&&answerFor(pair.id);if(!answer||answer.ruleViewedAt)return;
     answer.ruleViewedAt=new Date().toISOString();persist();

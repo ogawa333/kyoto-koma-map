@@ -16,13 +16,13 @@ async function choose(page,id){await page.locator('#evaluationSet').selectOption
  assert.equal(await p.locator('#candidateDiagram svg, #targetDiagram svg').count(),2);
  for(const [width,height] of [[1280,640],[1366,768],[1024,768],[1920,1080]]){
   await p.setViewportSize({width,height});await p.evaluate(()=>scrollTo(0,0));
-  for(const sel of ['#candidateDiagram svg','#targetDiagram svg',...['clear','borderline','indistinguishable','uncertain'].map(v=>'label.choice:has(input[value='+v+'])'),'#saveAnswer']){
+  for(const sel of ['#candidateDiagram svg','#targetDiagram svg',...['clear','borderline','indistinguishable','uncertain'].map(v=>'label.choice:has(input[value='+v+'])'),'#notes']){
    const b=await p.locator(sel).boundingBox();assert(b&&b.x>=0&&b.y>=0&&b.x+b.width<=width+1&&b.y+b.height<=height+1,JSON.stringify({width,height,sel,b}));
   }
  }
- await p.locator('[name=choice][value=borderline]').check();await p.locator('#saveAnswer').click();
+ await p.locator('[name=choice][value=borderline]').click();
  assert.equal((await saved(p)).dataset.responses.length,1);
- await choose(p,three);await p.locator('[name=choice][value=indistinguishable]').check();await p.locator('#saveAnswer').click();
+ await choose(p,three);await p.locator('[name=choice][value=indistinguishable]').click();
  await p.reload();assert.equal((await saved(p)).otherDatasets.length,2);
  await choose(p,two);assert.equal((await saved(p)).dataset.responses[0].choice,'borderline');
  await choose(p,'old-evaluation');assert.equal((await saved(p)).dataset.responses[0].notes,'以前の回答');
@@ -36,16 +36,16 @@ async function choose(page,id){await page.locator('#evaluationSet').selectOption
  await p.evaluate(()=>{window.originalSetItem=Storage.prototype.setItem;Storage.prototype.setItem=function(){throw new DOMException('full','QuotaExceededError')};});
  p.once('dialog',d=>d.accept());await p.locator('#openEvaluationSet').click();assert.match(await p.locator('#message').innerText(),/保存容量/);
  assert.equal((await saved(p)).dataset.id,two);assert.equal(await p.locator('#notes').inputValue(),'入力途中');
- await p.evaluate(()=>Storage.prototype.setItem=window.originalSetItem);await p.locator('#notes').fill('');await p.locator('[name=choice][value=clear]').check();await p.locator('#saveAnswer').click();
+ await p.evaluate(()=>Storage.prototype.setItem=window.originalSetItem);await p.locator('#notes').fill('');await p.locator('[name=choice][value=clear]').click();
  // Miura presets load directly, save answers, and resume without changing Kyoto answers.
  const fourth=JSON.parse(fs.readFileSync(root+'/site/data/evaluation-set-04.json'));
  const fifth=JSON.parse(fs.readFileSync(root+'/site/data/evaluation-set-05.json'));
  await choose(p,fourth.id);assert.match(await p.locator('#activeSetStatus').innerText(),/④.*三浦/);
  assert.equal((await saved(p)).dataset.pairs.length,100);
  assert((await saved(p)).dataset.pairs.every(pair=>pair.modelInput.candidate.center.lon>139));
- await p.locator('[name=choice][value=borderline]').check();await p.locator('#saveAnswer').click();
+ await p.locator('[name=choice][value=borderline]').click();
  await choose(p,fifth.id);assert.match(await p.locator('#activeSetStatus').innerText(),/⑤.*三浦/);
- await p.locator('[name=choice][value=indistinguishable]').check();await p.locator('#saveAnswer').click();
+ await p.locator('[name=choice][value=indistinguishable]').click();
  await p.reload();await choose(p,fourth.id);assert.equal((await saved(p)).dataset.responses[0].choice,'borderline');
  await choose(p,fifth.id);assert.equal((await saved(p)).dataset.responses[0].choice,'indistinguishable');
  console.log('PASS Miura sets IV/V load, save, switch and reload');
