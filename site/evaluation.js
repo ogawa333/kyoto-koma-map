@@ -2,6 +2,7 @@
   'use strict';
   const $=id=>document.getElementById(id),api=window.KomaEvaluation,KEY='kyoto-junction-evaluation-v1',COURSE='kyoto-komachizu-v1';
   let state={dataset:null,evaluatorId:'P001',role:'participant',currentPairId:null,onlyPending:false};
+  let busy=false,networkPromise=null;
   let dirty=false,unsaved=false,elapsed=0,started=performance.now(),active=!document.hidden,decision=null;
   const message=(text,error=false)=>{$('message').textContent=text;$('message').classList.toggle('error',error);};
   const elapsedNow=()=>Math.min(86400000,Math.round(elapsed+(active?performance.now()-started:0)));
@@ -25,10 +26,10 @@
     const note=document.createElement('p');note.className='small';note.textContent='少ない回答数で精度を断定しないでください。複数の評価者の回答はJSONに個別に残ります。';$('summaryData').replaceChildren(table,note);
   }
   function render(){
-    const dataset=state.dataset;$('workspace').hidden=!dataset;$('exportData').disabled=!dataset;
+    const dataset=state.dataset;$('workspace').hidden=!dataset;$('exportData').disabled=!dataset;$('expandDataset').disabled=!dataset||dataset.pairs.length>=100;
     $('evaluatorId').value=state.evaluatorId;$('role').value=state.role;$('onlyPending').checked=state.onlyPending;
     if(!dataset){$('sourceInfo').textContent='評価セットがありません。コマ地図を生成するか、評価JSONを読み込んでください。';return;}
-    $('sourceInfo').textContent=dataset.source.courseName+' ／ '+dataset.pairs.length+'ペア ／ 作成 '+new Date(dataset.createdAt).toLocaleString('ja-JP');
+    $('sourceInfo').textContent=dataset.source.courseName+' ／ '+dataset.pairs.length+'ペア'+(dataset.source.supplementalCourses?.length?'（補充コース'+dataset.source.supplementalCourses.length+'件を含む）':'')+' ／ 作成 '+new Date(dataset.createdAt).toLocaleString('ja-JP');
     const list=orderedPairs();if(!list.some(p=>p.id===state.currentPairId))state.currentPairId=list[0]?.id||null;
     const pair=currentPair(),index=list.findIndex(p=>p.id===state.currentPairId),answered=dataset.responses.filter(r=>r.evaluatorId===state.evaluatorId).length;
     $('progress').textContent=(pair?(index+1)+' / '+list.length+'ペア':'完了')+' ・ '+state.evaluatorId+' 回答済み '+answered+' / '+dataset.pairs.length;
@@ -41,7 +42,8 @@
     $('answerForm').reset();$('notes').value=answer?.notes||'';
     for(const input of document.querySelectorAll('[name=choice]'))input.checked=input.value===answer?.choice;
     $('ruleResult').open=false;$('ruleResult').hidden=!answer;
-    $('ruleText').textContent='このペアの形状判定：'+(pair.rulePrediction==='keep'?'似ている（残す判定）':'別の形（間引く判定）')+'。この回答：'+(answer?api.CHOICES[answer.choice].label:'未回答');
+    const origin=dataset.source.supplementalCourses?.find(c=>c.id===pair.context.courseId)?.name||dataset.source.courseName;
+    $('ruleText').textContent='出典：'+origin+'。このペアの形状判定：'+(pair.rulePrediction==='keep'?'似ている（残す判定）':'別の形（間引く判定）')+'。この回答：'+(answer?api.CHOICES[answer.choice].label:'未回答');
     elapsed=0;started=performance.now();active=!document.hidden;decision=null;dirty=false;
   }
   function focusComparison(){
@@ -52,21 +54,64 @@
     if(!discardDraft())return;const list=orderedPairs(),index=list.findIndex(p=>p.id===state.currentPairId),next=list[index+delta];if(!next)return;
     state.currentPairId=next.id;render();persist();focusComparison();
   }
-  function buildFromCourse(){
+  function setBusy(value){busy=value;for(const el of document.querySelectorAll('button,input,select,textarea'))el.disabled=value;}
+  function loadNetwork(){
+    if(window.KYOTO_NETWORK?.sampleLocations)return Promise.resolve(window.KYOTO_NETWORK);
+    if(networkPromise)return networkPromise;
+    networkPromise=new Promise((resolve,reject)=>{
+      const script=document.createElement('script');script.src='data/kyoto-network.js';
+      script.onload=()=>{script.remove();if(window.KYOTO_NETWORK?.sampleLocations)resolve(window.KYOTO_NETWORK);else reject(new Error('京都の補充用データが未準備です。'));};
+      script.onerror=()=>{script.remove();reject(new Error('補充用の京都データを読み込めません。接続を確認して再試行してください。'));};document.head.append(script);
+    }).catch(error=>{networkPromise=null;throw error;});
+    return networkPromise;
+  }
+  async function fillTo100(dataset){
+    if(dataset.pairs.length>=100)return dataset;
+    message('100ペアを準備しています。京都の補充用コースを確認しています…');
+    const network=await loadNetwork(),variants=[];
+    let course;try{course=JSON.parse(localStorage.getItem(COURSE)||'null');}catch{}
+    if(!course?.dirty&&Array.isArray(course?.locations)&&course.locations.length>=2&&course.locations.length<=12){
+      const courseName=typeof course.result?.name==='string'?course.result.name.slice(0,150):'現在のコース';
+      variants.push({name:courseName+'・補充訪問順A',locations:window.KomaRouting.orderWaypoints(course.locations,()=>0)},{name:courseName+'・補充訪問順B',locations:window.KomaRouting.orderWaypoints(course.locations,()=>.999)});
+    }
+    variants.push({name:'京都サンプル・訪問順A',locations:window.KomaRouting.orderWaypoints(network.sampleLocations,()=>0)},{name:'京都サンプル・訪問順B',locations:window.KomaRouting.orderWaypoints(network.sampleLocations,()=>.999)});
+    const seen=new Set(),failures=[];
+    for(const variant of variants){
+      if(dataset.pairs.length>=100)break;
+      const routeKey=JSON.stringify(variant.locations.map(p=>[p.lat,p.lon,!!p.checkpoint]));if(seen.has(routeKey))continue;seen.add(routeKey);
+      message('100ペアを準備中：'+dataset.pairs.length+' / 100。'+variant.name+' を確認しています…');
+      await new Promise(resolve=>setTimeout(resolve,0));
+      try{
+        const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(routeKey+'|'+network.timestamp+'|'+dataset.source.ruleVersion));
+        const courseId='route-'+[...new Uint8Array(hash)].map(n=>n.toString(16).padStart(2,'0')).join('');
+        const prior=dataset.source.supplementalCourses?.find(c=>c.id===courseId);
+        const result=window.KomaRouting.generate(network,variant.locations);
+        const pool=api.buildDataset({result:{...result,allFrames:result.frames,name:prior?.name||variant.name},edits:{}},{id:'supplement-pool'});
+        dataset=api.extendDataset(dataset,pool,{count:100,courseId,name:prior?.name||variant.name});
+      }catch(error){failures.push(error.message);}
+    }
+    if(dataset.pairs.length<100)throw new Error('重複しない100ペアを用意できませんでした。元の回答は変更していません。'+failures.join(' / '));
+    return dataset;
+  }
+  async function buildFromCourse(expand=false){
+    if(busy)return;let preparationStarted=false;
     try{
-      const course=JSON.parse(localStorage.getItem(COURSE)||'null');
-      const dataset=api.buildDataset(course,{id:crypto.randomUUID()});
+      if(expand&&(!state.dataset||state.dataset.pairs.length>=100))return;
+      const course=expand?null:JSON.parse(localStorage.getItem(COURSE)||'null');
+      const base=expand?state.dataset:api.sizeUnansweredDataset(api.buildDataset(course,{id:crypto.randomUUID()}),100);
       if(!discardDraft())return;
-      if(state.dataset?.responses.length&&!confirm('新しい評価セットに切り替えます。前の回答を残すには、先に評価JSONを保存してください。切り替えてよいですか？'))return;
-      state.dataset=dataset;state.currentPairId=null;state.onlyPending=false;render();persist();message('評価セットを作成しました。現行ルールの判定は回答するまで表示しません。');
-    }catch(error){message(error.message,true);}
+      if(!expand&&state.dataset?.responses.length&&!confirm('新しい評価セットに切り替えます。前の回答を残すには、先に評価JSONを保存してください。切り替えてよいですか？'))return;
+      setBusy(true);preparationStarted=true;const dataset=await fillTo100(base);
+      state.dataset=dataset;if(!expand){state.currentPairId=null;state.onlyPending=false;}
+      setBusy(false);render();persist();message(expand?'回答と問題IDを保持して100ペアに増やしました。':'100ペアの評価セットを作成しました。判定は回答するまで表示しません。');
+    }catch(error){if(preparationStarted){setBusy(false);render();}message(error.message,true);}
   }
   $('identityForm').onsubmit=event=>{
     event.preventDefault();const code=$('evaluatorId').value.trim(),role=$('role').value;
     if(!code||code.length>40||/[\u0000-\u001f\u007f]/.test(code)){message('評価者コードは1〜40文字で入力してください。',true);return;}
     if(!discardDraft())return;state.evaluatorId=code;state.role=role;state.currentPairId=null;render();persist();message('評価者を '+code+' に切り替えました。');
   };
-  $('previous').onclick=()=>move(-1);$('next').onclick=()=>move(1);$('newDataset').onclick=buildFromCourse;
+  $('previous').onclick=()=>move(-1);$('next').onclick=()=>move(1);$('newDataset').onclick=()=>buildFromCourse(false);$('expandDataset').onclick=()=>buildFromCourse(true);
   $('onlyPending').onchange=()=>{if(!discardDraft()){$('onlyPending').checked=state.onlyPending;return;}state.onlyPending=$('onlyPending').checked;state.currentPairId=null;render();persist();};
   for(const input of document.querySelectorAll('[name=choice]'))input.onchange=()=>{decision=elapsedNow();dirty=true;};
   $('notes').oninput=()=>{dirty=true;};
@@ -93,6 +138,7 @@
     try{
       if(file.size>15*1024*1024)throw new Error('評価JSONは15MB以下にしてください。');
       const incoming=api.validateDataset(JSON.parse(await file.text()));
+      if(busy)throw new Error('100ペアの準備が終わってから読み込んでください。');
       const merged=api.mergeDatasets(state.dataset,incoming);
       if(!discardDraft())return;
       if(state.dataset&&state.dataset.id!==incoming.id&&state.dataset.responses.length&&!confirm('別の評価セットに切り替えます。現在の回答は書き出し済みですか？'))return;
