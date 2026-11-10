@@ -29,3 +29,10 @@
   #summary{margin:10px 0;padding:10px 14px}
   footer{margin:16px 0}
 }
+
+.dataset-picker{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0;font-size:12px}
+.dataset-picker label{font-weight:600}
+.dataset-picker select{min-width:0;max-width:min(100%,430px);padding:7px;font-size:12px}
+.dataset-picker button{padding:8px 10px;font-size:12px}
+#activeSetStatus{color:#637267;font-size:11px}
+@media(max-width:650px){.dataset-picker select{flex:1}.dataset-picker #activeSetStatus{width:100%}}
