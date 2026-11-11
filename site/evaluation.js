@@ -6,7 +6,9 @@
     {id:'50b2bef2-face-4e6a-9085-6a14026b5cde',label:'追加セット②（100問）',url:'data/evaluation-set-02.json'},
     {id:'88924b4c-094f-4b42-925a-08aec0f6a121',label:'追加セット③（100問）',url:'data/evaluation-set-03.json'},
     {id:'cbb5c4e3-75f2-40af-b7ca-c5ea65d647f8',label:'追加セット④（三浦・100問）',url:'data/evaluation-set-04.json'},
-    {id:'58037cac-de65-419a-8c4d-552290b8f7e4',label:'追加セット⑤（三浦・100問）',url:'data/evaluation-set-05.json'}
+    {id:'58037cac-de65-419a-8c4d-552290b8f7e4',label:'追加セット⑤（三浦・100問）',url:'data/evaluation-set-05.json'},
+    {id:'83031988-6c3b-57b5-9c8e-d0372282cbea',label:'追加セット⑥（三浦・重点評価100問）',url:'data/evaluation-set-06.json'},
+    {id:'de6628d7-c538-563e-8514-d2bcfe226e59',label:'追加セット⑦（三浦・確認用100問）',url:'data/evaluation-set-07.json'}
   ];
   let otherDatasets=[];
   let busy=false,networkPromise=null,disabledBeforeBusy=new Map();
@@ -69,7 +71,7 @@
     $('workspace').hidden=!dataset;$('exportData').disabled=!dataset;$('expandDataset').disabled=!dataset||dataset.pairs.length>=100||dataset.source.ruleVersion!==window.KomaRouting.RULE_VERSION;
     $('settingsSummary').textContent='評価者・保存・JSON操作（'+state.evaluatorId+'）';
     $('evaluatorId').value=state.evaluatorId;$('role').value=state.role;$('onlyPending').checked=state.onlyPending;
-    if(!dataset){$('sourceInfo').textContent='評価セットがありません。上の選択欄から追加セット②〜⑤を開くか、評価JSONを読み込んでください。';return;}
+    if(!dataset){$('sourceInfo').textContent='評価セットがありません。上の選択欄から追加セット②〜⑦を開くか、評価JSONを読み込んでください。';return;}
     $('sourceInfo').textContent=dataset.source.courseName+' ／ '+dataset.pairs.length+'ペア'+(dataset.source.supplementalCourses?.length?'（補充コース'+dataset.source.supplementalCourses.length+'件を含む）':'')+(dataset.version<3?' ／ 従来の図・判定（回答当時の表示）':' ／ 道路端の記号と新しい判定')+' ／ 作成 '+new Date(dataset.createdAt).toLocaleString('ja-JP');
     const list=orderedPairs();if(!list.some(p=>p.id===state.currentPairId))state.currentPairId=list[0]?.id||null;
     const pair=currentPair(),index=list.findIndex(p=>p.id===state.currentPairId),answered=dataset.responses.filter(r=>r.evaluatorId===state.evaluatorId).length;
