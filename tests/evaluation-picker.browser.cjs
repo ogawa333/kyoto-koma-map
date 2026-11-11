@@ -49,6 +49,25 @@ async function choose(page,id){await page.locator('#evaluationSet').selectOption
  await p.reload();await choose(p,fourth.id);assert.equal((await saved(p)).dataset.responses[0].choice,'borderline');
  await choose(p,fifth.id);assert.equal((await saved(p)).dataset.responses[0].choice,'indistinguishable');
  console.log('PASS Miura sets IV/V load, save, switch and reload');
+ const sixth=JSON.parse(fs.readFileSync(root+'/site/data/evaluation-set-06.json'));
+ const seventh=JSON.parse(fs.readFileSync(root+'/site/data/evaluation-set-07.json'));
+ await choose(p,sixth.id);assert.match(await p.locator('#activeSetStatus').innerText(),/⑥.*三浦/);
+ assert.equal((await saved(p)).dataset.pairs.length,100);assert.equal((await saved(p)).dataset.responses.length,0);
+ assert(await p.locator('#endingLegend').isVisible());assert.equal(await p.locator('#candidateDiagram [marker-end]').count(),0);
+ await p.setViewportSize({width:1280,height:640});await p.evaluate(()=>scrollTo(0,0));
+ for(const selector of ['#candidateDiagram svg','#targetDiagram svg','#notes',...['clear','borderline','indistinguishable','uncertain'].map(v=>'label.choice:has(input[value='+v+'])')]){
+   const box=await p.locator(selector).boundingBox();assert(box&&box.y>=0&&box.y+box.height<=641,JSON.stringify({selector,box}));
+ }
+ await p.locator('#notes').fill('⑥の評価理由');await p.locator('[name=choice][value=borderline]').click();
+ await choose(p,seventh.id);assert.match(await p.locator('#activeSetStatus').innerText(),/⑦.*三浦/);
+ assert.equal((await saved(p)).dataset.pairs.length,100);assert.equal((await saved(p)).dataset.responses.length,0);
+ // Selection criteria and machine predictions must not prime the next answer.
+ assert.equal(await p.locator('#ruleResult').isVisible(),false);assert.equal(await p.locator('#candidateDiagram [marker-end]').count(),0);
+ await p.locator('[name=choice][value=indistinguishable]').click();await p.reload();
+ await choose(p,sixth.id);assert.equal((await saved(p)).dataset.responses[0].notes,'⑥の評価理由');
+ await choose(p,seventh.id);assert.equal((await saved(p)).dataset.responses[0].choice,'indistinguishable');
+ await choose(p,fourth.id);assert.equal((await saved(p)).dataset.responses[0].choice,'borderline');
+ console.log('PASS focused Miura sets VI/VII load, auto-save, switch and resume while preserving prior answers');
  // Archived presets resume even when the preset download fails.
  await p.route('**/data/evaluation-set-*.json',route=>route.abort());await choose(p,three);assert.equal((await saved(p)).dataset.responses.length,1);
  await p.locator('#settingsPanel').evaluate(e=>e.open=true);
