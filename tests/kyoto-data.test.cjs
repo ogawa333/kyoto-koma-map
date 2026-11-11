@@ -85,10 +85,10 @@ test('the real Kyoto evaluation set includes both rule classes and excludes prot
     assert.equal(Object.hasOwn(pair.modelInput.candidate,'routeOut'),false);
   }
 });
-test('two genuine Kyoto visit orders provide 100 distinct evaluation pairs while retaining v1 answers',()=>{
+test('two genuine Kyoto visit orders provide 100 distinct evaluation pairs while retaining answers',()=>{
   const api=require('../site/evaluation-core.js');
   function make(random,id){const result=engine.generate(data,engine.orderWaypoints(data.sampleLocations,random));return api.buildDataset({result:{...result,allFrames:result.frames,name:'京都評価セット'},edits:{}},{id,createdAt:'2026-11-09T00:00:00Z'});}
-  let base=make(()=>.999,'old-evaluation-set');assert.equal(base.pairs.length,74);base.version=1;
+  let base=make(()=>.999,'old-evaluation-set');assert.equal(base.pairs.length,74);
   base=api.saveResponse(base,{pairId:base.pairs[0].id,evaluatorId:'P001',role:'participant',choice:'borderline',notes:'既存の回答',activeViewMs:1000,decisionMs:900,updatedAt:'2026-11-09T01:00:00Z'});
   const expanded=api.extendDataset(base,make(()=>0,'other-route'),{count:100,courseId:'route-B',name:'京都・別訪問順'});
   assert.equal(expanded.pairs.length,100);assert.equal(new Set(expanded.pairs.map(p=>JSON.stringify(p.splitGroups))).size,100);

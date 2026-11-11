@@ -96,20 +96,31 @@
     while (lo + 1 < hi) {const mid = (lo + hi) >> 1; if (cumulative[mid] <= at) lo = mid; else hi = mid;}
     return {...interpolate(points[lo], points[hi], (at - cumulative[lo]) / (cumulative[hi] - cumulative[lo] || 1)), index: lo};
   }
-  function roadShape(g, id, neighbor, limit = 28) {
-    const points = [g.nodes.get(id), g.nodes.get(neighbor)];
-    let prev = id, next = neighbor, walked = distance(points[0], points[1]);
-    const seen = new Set([id, neighbor]);
-    while (walked < limit) {
-      const options = (g.visual.get(next) || []).filter(e => e.to !== prev);
-      if (options.length !== 1 || seen.has(options[0].to)) break;
-      prev = next; next = options[0].to; seen.add(next);
-      points.push(g.nodes.get(next)); walked += distance(points.at(-2), points.at(-1));
+  // Keep the reason for a visible branch end; a clipped line is not a dead end.
+  function traceRoad(g,id,neighbor,limit=28){
+    const points=[g.nodes.get(id)],seen=new Set([id]);let previous=id,current=neighbor,remaining=limit;
+    const finish=end=>({points:points.map(p=>({lat:p.lat,lon:p.lon})),end});
+    while(true){
+      const a=g.nodes.get(previous),b=g.nodes.get(current);
+      if(!a||!b)return finish('unknown');
+      const meters=distance(a,b);
+      if(meters<.000001)return finish('unknown');
+      if(meters>remaining+.000001){points.push(interpolate(a,b,remaining/meters));return finish('limit');}
+      points.push(b);remaining-=meters;
+      if(seen.has(current))return finish('loop');seen.add(current);
+      const edges=g.visual.get(current)||[],next=edges.filter(e=>e.to!==previous);
+      if(edges.length>=3)return finish('junction');
+      if(!next.length){
+        const arrival=(g.visual.get(previous)||[]).find(e=>e.to===current);
+        // A leaf in an extract alone is insufficient evidence of a real dead end.
+        return finish(b.tags?.noexit==='yes'||arrival?.way.tags?.noexit==='yes'?'dead-end':'unknown');
+      }
+      if(next.length!==1)return finish('unknown');
+      if(remaining<=.000001)return finish('limit');
+      previous=current;current=next[0].to;
     }
-    const output = [points[0]]; let covered = 0;
-    for (let i = 1; i < points.length; i++) {const len = distance(points[i - 1], points[i]); if (covered + len > limit) {output.push(interpolate(points[i - 1], points[i], (limit - covered) / len)); break;} output.push(points[i]); covered += len;}
-    return output.map(p => ({lat: p.lat, lon: p.lon}));
   }
+  function roadShape(g,id,neighbor,limit=28){return traceRoad(g,id,neighbor,limit).points;}
   function signOf(n) {
     const t = n.tags || {}, value = t.traffic_sign || t['traffic_sign:forward'] || t['traffic_sign:backward'] || '';
     if (t.highway === 'traffic_signals') return {kind: 'signals', label: '信号機'};
@@ -194,28 +205,41 @@
     }
     return signature;
   }
-  function similarJunctions(a,b) {
-    const left=junctionSignature(a),right=junctionSignature(b);
-    return similarSignatures(left,right,a.branches?.length,b.branches?.length);
+  function junctionRadii(frame){
+    if(!frame.center||!Array.isArray(frame.branches)||!frame.branches.every(b=>Array.isArray(b)&&b.length>=2&&b.every(p=>p&&Number.isFinite(p.lat)&&Number.isFinite(p.lon))))return null;
+    return frame.branches.map(branch=>{
+      const cumulative=[0];for(let i=1;i<branch.length;i++)cumulative.push(cumulative.at(-1)+distance(branch[i-1],branch[i]));
+      return [8,20].map(at=>{
+        const p=sample(branch,cumulative,Math.min(at,cumulative.at(-1))),c=frame.center;
+        return Math.hypot((p.lon-c.lon)*111320*Math.cos(c.lat*rad),(p.lat-c.lat)*111320);
+      });
+    });
   }
-  function similarSignatures(a,b,aCount=a?.length,bCount=b?.length) {
-    // Road count is the primary criterion, even when angles are unavailable.
+  function similarJunctions(a,b){
+    return similarSignatures(junctionSignature(a),junctionSignature(b),a.branches?.length,b.branches?.length,junctionRadii(a),junctionRadii(b));
+  }
+  function similarSignatures(a,b,aCount=a?.length,bCount=b?.length,aRadii=null,bRadii=null){
     if(aCount!==undefined&&bCount!==undefined&&aCount!==bCount)return false;
-    // Insufficient geometry is not evidence that two junctions can be distinguished.
     if(!a||!b)return true;
-    const small=a.length<=b.length?a:b,big=a.length<=b.length?b:a;
-    const matches=Array(big.length).fill(-1);
+    const matches=Array(b.length).fill(-1);
     function assign(i,seen){
-      for(let j=0;j<big.length;j++){
-        if(seen.has(j)||!small[i].every((v,k)=>Math.abs(angle(v-big[j][k]))<=20*rad))continue;
-        seen.add(j);
-        if(matches[j]===-1||assign(matches[j],seen)){matches[j]=i;return true;}
+      for(let j=0;j<b.length;j++){
+        if(seen.has(j))continue;
+        const compatible=a[i].every((v,k)=>{
+          const difference=Math.abs(angle(v-b[j][k]));
+          if(difference<=20*rad+1e-12)return true;
+          if(difference>45*rad+1e-12||!aRadii||!bRadii)return false;
+          // Compare direction at the shorter drawn radius, in the original SVG
+          // scale (2.6 units/m). Branch count and signed bearings stay intact.
+          const visibleDifference=2*Math.min(aRadii[i][k],bRadii[j][k])*Math.sin(difference/2)*2.6;
+          return visibleDifference<=8+1e-8;
+        });
+        if(!compatible)continue;
+        seen.add(j);if(matches[j]===-1||assign(matches[j],seen)){matches[j]=i;return true;}
       }
       return false;
     }
-    let count=0;for(let i=0;i<small.length;i++)if(assign(i,new Set()))count++;
-    // Equal road counts are required; every branch must have an angular match.
-    return count===small.length;
+    return a.every((_,i)=>assign(i,new Set()));
   }
   function hasFrameEdit(frame,edits={}) {
     return Object.values(edits[frame.id]||{}).some(v=>v&&typeof v==='object'?Object.keys(v).length:!!v);
@@ -228,7 +252,7 @@
   }
   function selectFrames(frames, mode='all', edits={}) {
     const keep=frames.map((f,i)=>mode!=='reduced'||baseFrameIsRequired(f,i,frames.length,edits));
-    const reasons=new Map(),signatures=frames.map(junctionSignature);
+    const reasons=new Map(),signatures=frames.map(junctionSignature),radii=frames.map(junctionRadii);
     if(mode==='reduced'){
       // Each insertion splits the interval. Restart until no omitted frame resembles
       // the next displayed frame (straight instructions are checked too).
@@ -241,7 +265,7 @@
           // decision requiring lookalike junctions to be restored. Keep the interval
           // boundary here so earlier junctions are not compared beyond this signal.
           if(skipSimilarityTarget(frames[target],edits)){previous=target;continue;}
-          for(let i=previous+1;i<target;i++)if(similarSignatures(signatures[i],signatures[target],frames[i].branches?.length,frames[target].branches?.length)){
+          for(let i=previous+1;i<target;i++)if(similarSignatures(signatures[i],signatures[target],frames[i].branches?.length,frames[target].branches?.length,radii[i],radii[target])){
             keep[i]=true;reasons.set(i,{targetId:frames[target].id,label:frames[target].label||'表示'});changed=true;break;
           }
           if(changed)break;
@@ -292,10 +316,11 @@
       const routeIn=[],routeOut=[];
       if(e.at>0){routeIn.push(before);for(let j=0;j<points.length;j++)if(cumulative[j]>beforeAt&&cumulative[j]<e.at)routeIn.push(points[j]);routeIn.push(center);}
       if(e.at<total){routeOut.push(center);for(let j=0;j<points.length;j++)if(cumulative[j]>e.at&&cumulative[j]<afterAt)routeOut.push(points[j]);routeOut.push(after);}
+      const traces=(g.visual.get(ids[e.nodeIndex])||[]).map(edge=>traceRoad(g,ids[e.nodeIndex],edge.to));
       const occurrence=occurrences.get(ids[e.nodeIndex])||0;occurrences.set(ids[e.nodeIndex],occurrence+1);
       const atVisit=visits.some(v=>v.nodeIndex===e.nodeIndex),follows=continuation(g,ids,e.nodeIndex);
       const retainedForStraightSignal=!atVisit&&Math.abs(turn)<25&&!follows&&continuation(g,ids,e.nodeIndex,true);
-      return {id:`junction:${ids[e.nodeIndex]}:${occurrence}`,number:i+1,center:{lat:center.lat,lon:center.lon},routeIndex:e.nodeIndex,at:e.at,kind:'junction',isJunction:true,canOmit:!atVisit&&follows,retainedForStraightSignal,checkpoints:[],label:Math.abs(turn)<25?'直進':Math.abs(turn)>155?'折り返し':turn>0?'右へ進む':'左へ進む',heading,branches:(g.visual.get(ids[e.nodeIndex])||[]).map(edge=>roadShape(g,ids[e.nodeIndex],edge.to)),routeIn,routeOut,signs:[],landmark:null,landmarks:[],fromPrevious:e.at-(i?events[i-1].at:0)};
+      return {id:`junction:${ids[e.nodeIndex]}:${occurrence}`,number:i+1,center:{lat:center.lat,lon:center.lon},routeIndex:e.nodeIndex,at:e.at,kind:'junction',isJunction:true,canOmit:!atVisit&&follows,retainedForStraightSignal,checkpoints:[],label:Math.abs(turn)<25?'直進':Math.abs(turn)>155?'折り返し':turn>0?'右へ進む':'左へ進む',heading,branches:traces.map(t=>t.points),branchEnds:traces.map(t=>t.end),routeIn,routeOut,signs:[],landmark:null,landmarks:[],fromPrevious:e.at-(i?events[i-1].at:0)};
     });
     const unassignedCheckpoints=[];
     for(const visit of visits.filter(v=>v.checkpoint)){
@@ -316,7 +341,7 @@
       }
     }
     for(const f of frames)f.landmark=f.landmarks[0]||null;
-    return {generationVersion:9,frames,distance:total,path:points.map(p=>({lat:p.lat,lon:p.lon})),unassignedCheckpoints};
+    return {generationVersion:10,frames,distance:total,path:points.map(p=>({lat:p.lat,lon:p.lon})),unassignedCheckpoints};
   }
   function generate(data, locations, options = {}) {
     if (locations.length < 2 || locations.some(p => !Number.isFinite(p.lat) || !Number.isFinite(p.lon))) throw new Error('スタートとゴールの地点を指定してください。');
@@ -329,7 +354,7 @@
     const result = makeFrames(g, ids, visits, data, options);
     return {...result, snapped: snapped.map(s => ({...g.nodes.get(s.id), offset: s.offset})), sourceDate: data.timestamp};
   }
-  const api = {distance, bearing, angle, walkable, graph, snap, shortest, generate, continuation, selectFrames, baseFrameIsRequired, skipSimilarityTarget, junctionSignature, similarJunctions, orderWaypoints, signOf, project, landmarkInfo};
+  const api = {GENERATION_VERSION:10,RULE_VERSION:'kyoto-geometry-v4-visual-margin',distance,traceRoad, bearing, angle, walkable, graph, snap, shortest, generate, continuation, selectFrames, baseFrameIsRequired, skipSimilarityTarget, junctionSignature, similarJunctions, orderWaypoints, signOf, project, landmarkInfo};
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.KomaRouting = api;
 })(typeof window === 'undefined' ? globalThis : window);

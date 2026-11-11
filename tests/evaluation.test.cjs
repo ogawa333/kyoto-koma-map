@@ -3,15 +3,21 @@ const api=require('../site/evaluation-core.js'),diagram=require('../site/diagram
 function frame(id,at,canOmit,angles=[180,0,90]){
   const center={lat:35,lon:135};
   const p=(degrees,meters)=>({lat:35+Math.cos(degrees*Math.PI/180)*meters/111320,lon:135+Math.sin(degrees*Math.PI/180)*meters/111320/Math.cos(35*Math.PI/180)});
-  return {id:'junction:'+id+':0',at,canOmit,label:'直進',center,heading:0,branches:angles.map(a=>[center,p(a,28)]),routeIn:[p(180,24),center],routeOut:[center,p(0,24)],checkpoints:[]};
+  return {id:'junction:'+id+':0',at,canOmit,label:'直進',center,heading:0,branches:angles.map(a=>[center,p(a,28)]),branchEnds:angles.map(()=>'limit'),routeIn:[p(180,24),center],routeOut:[center,p(0,24)],checkpoints:[]};
 }
-function course(){const frames=[frame(0,0,false),frame(1,100,true),frame(2,200,true,[180,0,-90]),frame(3,300,false)];return {result:{name:'評価テスト',generationVersion:9,sourceDate:'2026-11-09T00:00:00Z',allFrames:frames},edits:{}};}
+function course(){const frames=[frame(0,0,false),frame(1,100,true),frame(2,200,true,[180,0,-90]),frame(3,300,false)];return {result:{name:'評価テスト',generationVersion:10,sourceDate:'2026-11-09T00:00:00Z',allFrames:frames},edits:{}};}
 const build=c=>api.buildDataset(c||course(),{id:'dataset-test',createdAt:'2026-11-09T00:00:00Z'});
+function legacy(d,version=1){
+  d=structuredClone(d);d.version=version;d.source.generationVersion=9;d.source.ruleVersion='kyoto-geometry-v3-signal-policy';
+  for(const k of ['presentationVersion','ruleMaxAngleDegrees','ruleSvgTolerance'])delete d.source[k];
+  for(const p of d.pairs)for(const f of [p.modelInput.candidate,p.modelInput.target])delete f.branchEnds;
+  return d;
+}
 function answer(d,index,choice,evaluatorId='P001',extra={}){return api.saveResponse(d,{pairId:d.pairs[index].id,evaluatorId,role:'participant',choice,notes:'比較した理由',activeViewMs:4000,decisionMs:2500,updatedAt:'2026-11-09T01:00:00Z',...extra});}
 test('build includes both rule positives and negatives, with no candidate answer or images',()=>{
   const c=course();c.result.settings={apiKey:'DO-NOT-EXPORT'};c.edits[c.result.allFrames[0].id]={images:{x:'PRIVATE-PHOTO'}};
   const d=build(c);assert.equal(d.pairs.length,2);assert.deepEqual(d.pairs.map(p=>p.rulePrediction),['keep','omit']);
-  assert.deepEqual(Object.keys(d.pairs[0].modelInput.candidate).sort(),['branches','center','heading']);
+  assert.deepEqual(Object.keys(d.pairs[0].modelInput.candidate).sort(),['branchEnds','branches','center','heading']);
   assert.ok(d.pairs[0].modelInput.target.routeOut.length);const json=JSON.stringify(d);assert.ok(!json.includes('DO-NOT-EXPORT'));assert.ok(!json.includes('PRIVATE-PHOTO'));api.validateDataset(d);
 });
 test('mandatory edits/CP and straight-signal target exclusions use the shared navigation policy',()=>{
@@ -23,7 +29,7 @@ test('dirty, old, missing and malformed courses cannot produce a misleading data
   assert.throws(()=>api.buildDataset(null,{id:'x'}),/コマ地図/);
   assert.throws(()=>build({...course(),dirty:true}),/変更中/);
   const c=course();c.result.generationVersion=8;assert.throws(()=>build(c),/更新/);
-  c.result.generationVersion=9;c.result.allFrames[1].center.lat=NaN;assert.throws(()=>build(c),/読み取れません/);
+  c.result.generationVersion=10;c.result.allFrames[1].center.lat=NaN;assert.throws(()=>build(c),/読み取れません/);
 });
 test('borderline is an omit label; uncertainty is unlabelled with keep recommendation',()=>{
   let d=answer(build(),0,'borderline');d=answer(d,1,'uncertain');
@@ -75,8 +81,8 @@ test('new sets take at most 100 distinct physical pairs without altering the sou
   assert.throws(()=>api.sizeUnansweredDataset(answer(source,0,'clear'),100),/回答済み/);
 });
 test('expansion to 100 retains original pair IDs and answers, deduplicates additions and records origins',()=>{
-  const original=answer(build(),0,'borderline');original.version=1;
-  const supplement=pool(150);supplement.pairs.unshift(structuredClone(original.pairs[0]));
+  const original=legacy(answer(build(),0,'borderline'));
+  const supplement=legacy(pool(150));supplement.pairs.unshift(structuredClone(original.pairs[0]));
   const d=api.extendDataset(original,supplement,{count:100,courseId:'route-A',name:'補充用コース'});
   assert.equal(d.version,2);assert.equal(d.pairs.length,100);assert.deepEqual(d.pairs.slice(0,2),original.pairs);assert.deepEqual(d.responses,original.responses);
   assert.equal(original.pairs.length,2);assert.equal(new Set(d.pairs.map(p=>JSON.stringify(p.splitGroups))).size,100);
@@ -84,9 +90,9 @@ test('expansion to 100 retains original pair IDs and answers, deduplicates addit
   api.validateDataset(api.exportDataset(d));assert.equal(api.extendDataset(d,pool(3),{count:100}),d);
 });
 test('old shorter backups merge into expanded sets without removing questions or other evaluators',()=>{
-  const original=answer(build(),0,'borderline');original.version=1;
-  const expanded=api.extendDataset(original,pool(150),{count:100,courseId:'route-A',name:'補充'});
-  const older=answer(build(),1,'clear','P002');older.version=1;
+  const original=legacy(answer(build(),0,'borderline'));
+  const expanded=api.extendDataset(original,legacy(pool(150)),{count:100,courseId:'route-A',name:'補充'});
+  const older=legacy(answer(build(),1,'clear','P002'));
   for(const merged of [api.mergeDatasets(expanded,api.exportDataset(older)),api.mergeDatasets(older,api.exportDataset(expanded))]){
     assert.equal(merged.pairs.length,100);assert.equal(merged.responses.length,2);assert.equal(merged.version,2);api.validateDataset(merged);
   }
