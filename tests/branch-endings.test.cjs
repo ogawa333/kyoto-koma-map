@@ -38,7 +38,7 @@ test('new evaluation exports preserve endings and rule metadata; original sets r
  const original=require('../site/data/evaluation-set-02.json');const old=JSON.stringify(original);evaluation.validateDataset(evaluation.exportDataset(original));assert.equal(JSON.stringify(original),old);
  const f=shape([180,0,90]);f.branchEnds=['limit','limit','limit'];f.routeIn=[f.branches[0][1],f.center];f.routeOut=f.branches[1];
  const frames=[0,1,2].map((i)=>({...structuredClone(f),id:'junction:'+i+':0',at:i*100,canOmit:i===1,checkpoints:[]}));
- const d=evaluation.buildDataset({result:{generationVersion:11,allFrames:frames,sourceDate:null},edits:{}},{id:'new-ends'});
+ const d=evaluation.buildDataset({result:{generationVersion:10,allFrames:frames,sourceDate:null},edits:{}},{id:'new-ends'});
  assert.equal(d.version,3);assert.equal(d.source.ruleVersion,engine.RULE_VERSION);assert.equal(d.source.ruleSvgTolerance,8);assert.equal(d.source.presentationVersion,'branch-ends-v1');assert(d.pairs[0].modelInput.candidate.branchEnds);
  evaluation.validateDataset(evaluation.exportDataset(d));
  const bad=structuredClone(d);bad.pairs[0].modelInput.candidate.branchEnds=['limit'];assert.throws(()=>evaluation.validateDataset(bad));

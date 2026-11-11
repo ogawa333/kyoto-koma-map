@@ -7,17 +7,6 @@
     return {point,path};
   }
   const endLabels={junction:'次の交差点で描画を省略。道は先へ続きます',limit:'表示範囲のため描画を省略。道は先へ続きます',loop:'接続する道が続くため描画を省略', 'dead-end':'行き止まり登録のある端点',unknown:'端点の状態は未確認'};
-  // Used by the roadbook only. Evaluation diagrams retain their original view.
-  function continuationPaths(frame){
-    const {path}=geometry(frame);
-    return (frame.roadContinuations||[]).map(road=>`<path class="road-continuation" d="${path(road.points)}"/>`).join('');
-  }
-  function roadbookEndingMarks(frame){
-    if(!Array.isArray(frame.branchEnds)||frame.branchEnds.length!==frame.branches.length)return '';
-    const roads=frame.branches.map((points,i)=>({points,end:frame.branchEnds[i]})).concat(frame.roadContinuations||[]).filter(r=>['dead-end','unknown'].includes(r.end));
-    return endingMarks({...frame,branches:roads.map(r=>r.points),branchEnds:roads.map(r=>r.end)});
-  }
-  function roadbookEndingLegend(){return '<span>道路端：</span><span>短い枝は先の道路も表示</span><span><b>⊥</b> 行き止まり登録</span><span><b>?</b> 端点未確認</span>';}
   function endingMarks(frame){
     if(!Array.isArray(frame.branchEnds)||frame.branchEnds.length!==frame.branches.length)return '';
     const {point}=geometry(frame);
@@ -42,5 +31,5 @@
     const route=showRoute?`<defs><marker id="evaluationArrow" markerWidth="7" markerHeight="7" refX="5.5" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0L7,3L0,6Z" fill="#20251f"/></marker></defs><path class="evaluation-route-in" d="${path(frame.routeIn||[])}" fill="none" stroke="#20251f" stroke-width="3.2"/><path class="evaluation-route-out" d="${path(frame.routeOut||[])}" fill="none" stroke="#20251f" stroke-width="3.2" marker-end="url(#evaluationArrow)"/>`:'';
     return `<svg class="evaluation-diagram" viewBox="0 0 220 200" role="img" aria-label="${showRoute?'次のコマの道路形状と進む方向':'手前の交差点の道路形状。進む方向は非表示'}"><g stroke="#474d42" stroke-width="1.35" fill="none" stroke-linecap="round" stroke-linejoin="round">${roads}</g>${route}${endingMarks(frame)}<text x="110" y="${frame.branchEnds?196:188}" text-anchor="middle" fill="#768078" font-size="8">進入方向（下から入る）</text></svg>`;
   }
-  const api={geometry,continuationPaths,roadbookEndingMarks,roadbookEndingLegend,endingMarks,endingLegend,render};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.KomaDiagram=api;
+  const api={geometry,endingMarks,endingLegend,render};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.KomaDiagram=api;
 })(typeof window==='undefined'?globalThis:window);
