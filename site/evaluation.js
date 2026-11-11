@@ -63,11 +63,14 @@
   }
   function render(){
     renderSetPicker();
-    const dataset=state.dataset;$('workspace').hidden=!dataset;$('exportData').disabled=!dataset;$('expandDataset').disabled=!dataset||dataset.pairs.length>=100;
+    const dataset=state.dataset;
+    $('endingLegend').hidden=dataset?.source.presentationVersion!=='branch-ends-v1';
+    $('endingLegend').innerHTML=window.KomaDiagram.endingLegend();
+    $('workspace').hidden=!dataset;$('exportData').disabled=!dataset;$('expandDataset').disabled=!dataset||dataset.pairs.length>=100||dataset.source.ruleVersion!==window.KomaRouting.RULE_VERSION;
     $('settingsSummary').textContent='評価者・保存・JSON操作（'+state.evaluatorId+'）';
     $('evaluatorId').value=state.evaluatorId;$('role').value=state.role;$('onlyPending').checked=state.onlyPending;
     if(!dataset){$('sourceInfo').textContent='評価セットがありません。上の選択欄から追加セット②〜⑤を開くか、評価JSONを読み込んでください。';return;}
-    $('sourceInfo').textContent=dataset.source.courseName+' ／ '+dataset.pairs.length+'ペア'+(dataset.source.supplementalCourses?.length?'（補充コース'+dataset.source.supplementalCourses.length+'件を含む）':'')+' ／ 作成 '+new Date(dataset.createdAt).toLocaleString('ja-JP');
+    $('sourceInfo').textContent=dataset.source.courseName+' ／ '+dataset.pairs.length+'ペア'+(dataset.source.supplementalCourses?.length?'（補充コース'+dataset.source.supplementalCourses.length+'件を含む）':'')+(dataset.version<3?' ／ 従来の図・判定（回答当時の表示）':' ／ 道路端の記号と新しい判定')+' ／ 作成 '+new Date(dataset.createdAt).toLocaleString('ja-JP');
     const list=orderedPairs();if(!list.some(p=>p.id===state.currentPairId))state.currentPairId=list[0]?.id||null;
     const pair=currentPair(),index=list.findIndex(p=>p.id===state.currentPairId),answered=dataset.responses.filter(r=>r.evaluatorId===state.evaluatorId).length;
     $('progress').textContent=(pair?(index+1)+' / '+list.length+'ペア':'完了')+' ・ '+state.evaluatorId+' 回答済み '+answered+' / '+dataset.pairs.length;

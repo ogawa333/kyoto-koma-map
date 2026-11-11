@@ -37,3 +37,6 @@
 @media(max-width:650px){.dataset-picker select{flex:1}.dataset-picker #activeSetStatus{width:100%}}
 
 #autoSaveHint{margin:0 0 10px;line-height:1.6}
+
+.road-ending-legend{display:flex;flex-wrap:wrap;gap:5px 12px;font-size:11px;line-height:1.5;color:#637267;margin:5px 0}
+@media(min-width:1000px){#endingLegend:not([hidden])~#workspace #autoSaveHint{font-size:11px;line-height:1.45;margin-bottom:6px}}

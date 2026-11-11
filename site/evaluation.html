@@ -15,6 +15,7 @@
   <div class="toolbar"><button id="newDataset" type="button">新しい100ペア評価セット</button><button id="expandDataset" type="button">回答を残して100ペアに増やす</button><button id="exportData" type="button">評価JSONを保存</button><label class="file-button">評価JSONを読み込む<input id="importData" type="file" accept="application/json,.json"></label></div>
   <p class="small">新規セットは100ペアです。足りない分は京都の別の訪問順のコースから補充し、同じ地点ペアは追加しません。元のコマ地図のルートは変更しません。</p><p class="small">未回答セットのJSONを配れば、別の端末でも同じ問題を評価できます。同じセットの異なる評価者の回答は統合でき、回答の競合時は取り込みを中止します。写真・Google APIキーは評価JSONに含めません。</p>
 </details>
+<div id="endingLegend" class="road-ending-legend" hidden></div>
 <div id="message" role="status" aria-live="polite"></div>
 <section id="workspace" hidden>
   <div class="navigation"><button id="previous" type="button">← 前へ</button><span id="progress" role="status" aria-live="polite"></span><button id="next" type="button">回答せず次へ →</button></div>

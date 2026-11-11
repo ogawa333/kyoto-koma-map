@@ -3,26 +3,28 @@
   else root.KomaEvaluation=factory(root.KomaRouting);
 })(typeof window==='undefined'?globalThis:window,function(engine){
   'use strict';
-  const FORMAT='kyoto-junction-evaluation',VERSION=2;
+  const FORMAT='kyoto-junction-evaluation',VERSION=3;
+  const END_KINDS=['junction','limit','loop','dead-end','unknown'];
+  const validEnds=f=>Array.isArray(f.branchEnds)&&f.branchEnds.length===f.branches?.length&&f.branchEnds.every(e=>END_KINDS.includes(e));
   const CHOICES={clear:{label:'明確に区別できる',trainingLabel:'omit',recommendation:'omit'},borderline:{label:'ギリギリ区別できる',trainingLabel:'omit',recommendation:'omit'},indistinguishable:{label:'区別できない',trainingLabel:'keep',recommendation:'keep'},uncertain:{label:'判断保留',trainingLabel:null,recommendation:'keep'}};
   const ROLES=['participant','parent','child','author'];
   const isChoice=value=>Object.hasOwn(CHOICES,value);
   const point=p=>!!p&&Number.isFinite(p.lat)&&Number.isFinite(p.lon)&&Math.abs(p.lat)<=90&&Math.abs(p.lon)<=180;
   const text=(s,max)=>typeof s==='string'&&s.length>0&&s.length<=max;
   function frameValid(f,withRoute=false){
-    return f&&point(f.center)&&Number.isFinite(f.heading)&&Array.isArray(f.branches)&&f.branches.length>=3&&f.branches.length<=32&&f.branches.every(a=>Array.isArray(a)&&a.length>=2&&a.length<=500&&a.every(point))&&(!withRoute||['routeIn','routeOut'].every(key=>Array.isArray(f[key])&&f[key].length<=1000&&f[key].every(point)));
+    return f&&(f.branchEnds===undefined||validEnds(f))&&point(f.center)&&Number.isFinite(f.heading)&&Array.isArray(f.branches)&&f.branches.length>=3&&f.branches.length<=32&&f.branches.every(a=>Array.isArray(a)&&a.length>=2&&a.length<=500&&a.every(point))&&(!withRoute||['routeIn','routeOut'].every(key=>Array.isArray(f[key])&&f[key].length<=1000&&f[key].every(point)));
   }
   const clonePoints=points=>points.map(p=>({lat:p.lat,lon:p.lon}));
   function modelFrame(f,withRoute=false){
-    return {center:{lat:f.center.lat,lon:f.center.lon},heading:f.heading,branches:f.branches.map(clonePoints),...(withRoute?{routeIn:clonePoints(f.routeIn),routeOut:clonePoints(f.routeOut)}:{})};
+    return {center:{lat:f.center.lat,lon:f.center.lon},heading:f.heading,branches:f.branches.map(clonePoints),...(f.branchEnds?{branchEnds:[...f.branchEnds]}:{}),...(withRoute?{routeIn:clonePoints(f.routeIn),routeOut:clonePoints(f.routeOut)}:{})};
   }
   function physicalId(f){const match=String(f.id).match(/^junction:([^:]+):/);return match?'osm-node:'+match[1]:'coordinate:'+f.center.lat.toFixed(7)+','+f.center.lon.toFixed(7);}
   function buildDataset(course,{id,createdAt=new Date().toISOString()}={}){
     if(!text(id,200))throw new Error('評価セットIDが必要です。');
     if(course?.dirty)throw new Error('コース設定が変更中です。コマ地図を自動生成してから評価してください。');
     const result=course?.result,frames=result?.allFrames,edits=course?.edits||{};
-    if(!Array.isArray(frames)||frames.length<2||frames.length>3000||result.generationVersion!==9)throw new Error('コマ地図画面でコースを生成・更新してから開いてください。');
-    if(!frames.every(f=>text(f.id,200)&&Number.isFinite(f.at)&&frameValid(f,true)))throw new Error('コースの交差点データを読み取れません。');
+    if(!Array.isArray(frames)||frames.length<2||frames.length>3000||result.generationVersion!==engine.GENERATION_VERSION)throw new Error('コマ地図画面でコースを生成・更新してから開いてください。');
+    if(!frames.every(f=>text(f.id,200)&&Number.isFinite(f.at)&&frameValid(f,true)&&validEnds(f)))throw new Error('コースの交差点データを読み取れません。');
     const required=frames.map((f,i)=>engine.baseFrameIsRequired(f,i,frames.length,edits)),pairs=[];
     let previous=0;
     for(let j=1;j<frames.length;j++){
@@ -37,14 +39,17 @@
       previous=j;
     }
     if(!pairs.length)throw new Error('このコースには評価可能な省略候補がありません。別のコースを生成してください。');
-    return validateDataset({format:FORMAT,version:VERSION,id,createdAt,source:{courseName:result.name||'名称未設定',sourceDate:result.sourceDate||null,generationVersion:result.generationVersion,ruleVersion:'kyoto-geometry-v3-signal-policy',sampling:'all-omittable-before-next-mandatory-frame',evaluationMode:'diagram',ruleThresholdDegrees:20},pairs,responses:[]});
+    return validateDataset({format:FORMAT,version:VERSION,id,createdAt,source:{courseName:result.name||'名称未設定',sourceDate:result.sourceDate||null,generationVersion:result.generationVersion,ruleVersion:engine.RULE_VERSION,presentationVersion:'branch-ends-v1',ruleMaxAngleDegrees:45,ruleSvgTolerance:8,sampling:'all-omittable-before-next-mandatory-frame',evaluationMode:'diagram',ruleThresholdDegrees:20},pairs,responses:[]});
   }
   function responseKey(response){return JSON.stringify([response.evaluatorId,response.pairId]);}
   function validateDataset(d){
-    if(d?.format!==FORMAT||![1,VERSION].includes(d.version)||!text(d.id,200)||!Number.isFinite(Date.parse(d.createdAt))||!d.source||!text(d.source.courseName,200)||!text(d.source.ruleVersion,200)||!Array.isArray(d.pairs)||!d.pairs.length||d.pairs.length>3000||!Array.isArray(d.responses)||d.responses.length>60000)throw new Error('評価データの形式が正しくありません。');
+    if(d?.format!==FORMAT||![1,2,VERSION].includes(d.version)||!text(d.id,200)||!Number.isFinite(Date.parse(d.createdAt))||!d.source||!text(d.source.courseName,200)||!text(d.source.ruleVersion,200)||!Array.isArray(d.pairs)||!d.pairs.length||d.pairs.length>3000||!Array.isArray(d.responses)||d.responses.length>60000)throw new Error('評価データの形式が正しくありません。');
     const only=(value,keys)=>value&&Object.keys(value).every(k=>keys.includes(k));
-    if(!only(d,['format','version','id','createdAt','source','pairs','responses','exportedAt','summary'])||!only(d.source,['courseName','sourceDate','generationVersion','ruleVersion','sampling','evaluationMode','ruleThresholdDegrees','requestedPairs','supplementalCourses']))throw new Error('評価セットに不要な情報が含まれています。');
+    if(!only(d,['format','version','id','createdAt','source','pairs','responses','exportedAt','summary'])||!only(d.source,['courseName','sourceDate','generationVersion','ruleVersion','sampling','evaluationMode','ruleThresholdDegrees','requestedPairs','supplementalCourses','presentationVersion','ruleMaxAngleDegrees','ruleSvgTolerance']))throw new Error('評価セットに不要な情報が含まれています。');
     if(d.source.evaluationMode!=='diagram'||d.source.sampling!=='all-omittable-before-next-mandatory-frame'||!Number.isInteger(d.source.generationVersion)||d.source.ruleThresholdDegrees!==20||(d.source.sourceDate!==null&&!Number.isFinite(Date.parse(d.source.sourceDate))))throw new Error('評価セットの作成条件が正しくありません。');
+    if(d.version===3){
+      if(d.source.presentationVersion!=='branch-ends-v1'||d.source.ruleMaxAngleDegrees!==45||d.source.ruleSvgTolerance!==8)throw new Error('新しい図と判定の作成条件が正しくありません。');
+    }else if(['presentationVersion','ruleMaxAngleDegrees','ruleSvgTolerance'].some(k=>d.source[k]!==undefined))throw new Error('旧形式に新しい表示条件を混ぜることはできません。');
     if(d.source.requestedPairs!==undefined&&(!Number.isInteger(d.source.requestedPairs)||d.source.requestedPairs<1||d.source.requestedPairs>3000))throw new Error('評価件数が正しくありません。');
     const courses=d.source.supplementalCourses||[],courseIds=new Set();
     if(!Array.isArray(courses)||courses.length>40)throw new Error('補充コースの情報が正しくありません。');
@@ -55,6 +60,9 @@
     const ids=new Set();
     for(const p of d.pairs){
       if(!text(p.id,600)||ids.has(p.id)||!frameValid(p.modelInput?.candidate)||!frameValid(p.modelInput?.target,true)||!['keep','omit'].includes(p.rulePrediction)||!Array.isArray(p.splitGroups)||p.splitGroups.length!==2||!p.splitGroups.every(g=>text(g,200))||!p.context||!text(p.context.candidateId,200)||!text(p.context.targetId,200)||!Number.isFinite(p.context.candidateAt)||!Number.isFinite(p.context.targetAt))throw new Error('交差点ペアのデータが正しくありません。');
+      if(d.version===3){
+        if(!validEnds(p.modelInput.candidate)||!validEnds(p.modelInput.target))throw new Error('道路端の情報が不足しています。');
+      }else if(p.modelInput.candidate.branchEnds!==undefined||p.modelInput.target.branchEnds!==undefined)throw new Error('旧形式の問題の表示は変更できません。');
       // Prevent imported photos, keys and candidate answers from entering the dataset.
       if(!only(p,['id','modelInput','rulePrediction','splitGroups','context'])||!only(p.modelInput,['candidate','target'])||!only(p.context,['candidateId','targetId','candidateAt','targetAt','candidateAllNumber','targetAllNumber','courseId'])||canonical(p.modelInput.target)!==canonical(modelFrame(p.modelInput.target,true)))throw new Error('交差点ペアに不要な情報が含まれています。');
       if(canonical(p.modelInput.candidate)!==canonical(modelFrame(p.modelInput.candidate)))throw new Error('候補交差点に正解ルートなどの不要な情報が含まれています。');
@@ -102,7 +110,7 @@
     if(!Number.isInteger(count)||count<1||count>3000)throw new Error('評価件数が正しくありません。');
     const unique=[...new Map(dataset.pairs.map(p=>[physicalPairKey(p),p])).values()];
     const pairs=unique.length<=count?unique:Array.from({length:count},(_,i)=>unique[Math.floor(i*unique.length/count)]);
-    return validateDataset({...dataset,version:VERSION,source:{...dataset.source,requestedPairs:count},pairs});
+    return validateDataset({...dataset,version:Math.max(2,dataset.version),source:{...dataset.source,requestedPairs:count},pairs});
   }
   function extendDataset(dataset,supplement,{count=100,courseId,name}={}){
     validateDataset(dataset);validateDataset(supplement);
@@ -126,7 +134,7 @@
     const prior=courses.find(c=>c.id===courseId);
     if(prior&&canonical(prior)!==canonical(metadata))throw new Error('補充コースIDが競合しています。');
     if(!prior)courses.push(metadata);
-    return validateDataset({...dataset,version:VERSION,source:{...dataset.source,requestedPairs:count,supplementalCourses:courses},pairs});
+    return validateDataset({...dataset,version:Math.max(2,dataset.version,supplement.version),source:{...dataset.source,requestedPairs:count,supplementalCourses:courses},pairs});
   }
   function mergeDatasets(current,incoming){
     validateDataset(incoming);if(!current||current.id!==incoming.id)return incoming;
