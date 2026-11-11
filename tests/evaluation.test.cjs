@@ -5,7 +5,7 @@ function frame(id,at,canOmit,angles=[180,0,90]){
   const p=(degrees,meters)=>({lat:35+Math.cos(degrees*Math.PI/180)*meters/111320,lon:135+Math.sin(degrees*Math.PI/180)*meters/111320/Math.cos(35*Math.PI/180)});
   return {id:'junction:'+id+':0',at,canOmit,label:'直進',center,heading:0,branches:angles.map(a=>[center,p(a,28)]),branchEnds:angles.map(()=>'limit'),routeIn:[p(180,24),center],routeOut:[center,p(0,24)],checkpoints:[]};
 }
-function course(){const frames=[frame(0,0,false),frame(1,100,true),frame(2,200,true,[180,0,-90]),frame(3,300,false)];return {result:{name:'評価テスト',generationVersion:11,sourceDate:'2026-11-09T00:00:00Z',allFrames:frames},edits:{}};}
+function course(){const frames=[frame(0,0,false),frame(1,100,true),frame(2,200,true,[180,0,-90]),frame(3,300,false)];return {result:{name:'評価テスト',generationVersion:10,sourceDate:'2026-11-09T00:00:00Z',allFrames:frames},edits:{}};}
 const build=c=>api.buildDataset(c||course(),{id:'dataset-test',createdAt:'2026-11-09T00:00:00Z'});
 function legacy(d,version=1){
   d=structuredClone(d);d.version=version;d.source.generationVersion=9;d.source.ruleVersion='kyoto-geometry-v3-signal-policy';
@@ -29,7 +29,7 @@ test('dirty, old, missing and malformed courses cannot produce a misleading data
   assert.throws(()=>api.buildDataset(null,{id:'x'}),/コマ地図/);
   assert.throws(()=>build({...course(),dirty:true}),/変更中/);
   const c=course();c.result.generationVersion=8;assert.throws(()=>build(c),/更新/);
-  c.result.generationVersion=11;c.result.allFrames[1].center.lat=NaN;assert.throws(()=>build(c),/読み取れません/);
+  c.result.generationVersion=10;c.result.allFrames[1].center.lat=NaN;assert.throws(()=>build(c),/読み取れません/);
 });
 test('borderline is an omit label; uncertainty is unlabelled with keep recommendation',()=>{
   let d=answer(build(),0,'borderline');d=answer(d,1,'uncertain');

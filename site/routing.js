@@ -98,15 +98,15 @@
   }
   // Keep the reason for a visible branch end; a clipped line is not a dead end.
   function traceRoad(g,id,neighbor,limit=28){
-    const points=[g.nodes.get(id)],nodeIds=[id],seen=new Set([id]);let previous=id,current=neighbor,remaining=limit;
-    const finish=end=>({points:points.map(p=>({lat:p.lat,lon:p.lon})),end,nodeIds});
+    const points=[g.nodes.get(id)],seen=new Set([id]);let previous=id,current=neighbor,remaining=limit;
+    const finish=end=>({points:points.map(p=>({lat:p.lat,lon:p.lon})),end});
     while(true){
       const a=g.nodes.get(previous),b=g.nodes.get(current);
       if(!a||!b)return finish('unknown');
       const meters=distance(a,b);
       if(meters<.000001)return finish('unknown');
       if(meters>remaining+.000001){points.push(interpolate(a,b,remaining/meters));return finish('limit');}
-      points.push(b);nodeIds.push(current);remaining-=meters;
+      points.push(b);remaining-=meters;
       if(seen.has(current))return finish('loop');seen.add(current);
       const edges=g.visual.get(current)||[],next=edges.filter(e=>e.to!==previous);
       if(edges.length>=3)return finish('junction');
@@ -121,32 +121,6 @@
     }
   }
   function roadShape(g,id,neighbor,limit=28){return traceRoad(g,id,neighbor,limit).points;}
-  // Extend only the drawing. Original branches remain the input to similarity.
-  function roadContinuations(g,id,traces,minimum=12){
-    const edgeKey=(a,b)=>a<b?a+':'+b:b+':'+a,blocked=new Set(),drawn=new Set(),partial=new Set(),costs=new Map([[id,0]]),queue=new Heap(),roads=[];
-    for(const trace of traces){
-      for(let i=1;i<trace.nodeIds.length;i++)blocked.add(edgeKey(trace.nodeIds[i-1],trace.nodeIds[i]));
-      const meters=trace.points.slice(1).reduce((sum,p,i)=>sum+distance(trace.points[i],p),0),tip=trace.nodeIds.at(-1);
-      if(trace.end==='junction'&&meters<minimum){costs.set(tip,Math.min(costs.get(tip)??Infinity,meters));queue.push({id:tip,cost:meters,score:meters});}
-    }
-    while(queue.a.length&&roads.length<256){
-      const current=queue.pop();if(current.cost!==costs.get(current.id))continue;
-      for(const edge of g.visual.get(current.id)||[]){
-        const key=edgeKey(current.id,edge.to);if(blocked.has(key)||drawn.has(key))continue;
-        const a=g.nodes.get(current.id),b=g.nodes.get(edge.to),meters=distance(a,b),remaining=minimum-current.cost;
-        if(meters<.000001||remaining<=.000001)continue;
-        const clipped=meters>remaining+.000001,edges=g.visual.get(edge.to)||[];
-        const direction=current.id+':'+edge.to;if(partial.has(direction))continue;
-        if(clipped)partial.add(direction);else drawn.add(key);
-        const end=clipped?'limit':edges.length===1?(b.tags?.noexit==='yes'||edge.way.tags?.noexit==='yes'?'dead-end':'unknown'):edges.length>=3?'junction':'limit';
-        roads.push({points:[{lat:a.lat,lon:a.lon},clipped?interpolate(a,b,remaining/meters):{lat:b.lat,lon:b.lon}],end});
-        const cost=current.cost+meters;
-        if(!clipped&&cost<minimum-.000001&&cost<(costs.get(edge.to)??Infinity)){costs.set(edge.to,cost);queue.push({id:edge.to,cost,score:cost});}
-        if(roads.length>=256)break;
-      }
-    }
-    return roads;
-  }
   function signOf(n) {
     const t = n.tags || {}, value = t.traffic_sign || t['traffic_sign:forward'] || t['traffic_sign:backward'] || '';
     if (t.highway === 'traffic_signals') return {kind: 'signals', label: '信号機'};
@@ -346,7 +320,7 @@
       const occurrence=occurrences.get(ids[e.nodeIndex])||0;occurrences.set(ids[e.nodeIndex],occurrence+1);
       const atVisit=visits.some(v=>v.nodeIndex===e.nodeIndex),follows=continuation(g,ids,e.nodeIndex);
       const retainedForStraightSignal=!atVisit&&Math.abs(turn)<25&&!follows&&continuation(g,ids,e.nodeIndex,true);
-      return {id:`junction:${ids[e.nodeIndex]}:${occurrence}`,number:i+1,center:{lat:center.lat,lon:center.lon},routeIndex:e.nodeIndex,at:e.at,kind:'junction',isJunction:true,canOmit:!atVisit&&follows,retainedForStraightSignal,checkpoints:[],label:Math.abs(turn)<25?'直進':Math.abs(turn)>155?'折り返し':turn>0?'右へ進む':'左へ進む',heading,branches:traces.map(t=>t.points),branchEnds:traces.map(t=>t.end),roadContinuations:roadContinuations(g,ids[e.nodeIndex],traces),routeIn,routeOut,signs:[],landmark:null,landmarks:[],fromPrevious:e.at-(i?events[i-1].at:0)};
+      return {id:`junction:${ids[e.nodeIndex]}:${occurrence}`,number:i+1,center:{lat:center.lat,lon:center.lon},routeIndex:e.nodeIndex,at:e.at,kind:'junction',isJunction:true,canOmit:!atVisit&&follows,retainedForStraightSignal,checkpoints:[],label:Math.abs(turn)<25?'直進':Math.abs(turn)>155?'折り返し':turn>0?'右へ進む':'左へ進む',heading,branches:traces.map(t=>t.points),branchEnds:traces.map(t=>t.end),routeIn,routeOut,signs:[],landmark:null,landmarks:[],fromPrevious:e.at-(i?events[i-1].at:0)};
     });
     const unassignedCheckpoints=[];
     for(const visit of visits.filter(v=>v.checkpoint)){
@@ -367,7 +341,7 @@
       }
     }
     for(const f of frames)f.landmark=f.landmarks[0]||null;
-    return {generationVersion:11,frames,distance:total,path:points.map(p=>({lat:p.lat,lon:p.lon})),unassignedCheckpoints};
+    return {generationVersion:10,frames,distance:total,path:points.map(p=>({lat:p.lat,lon:p.lon})),unassignedCheckpoints};
   }
   function generate(data, locations, options = {}) {
     if (locations.length < 2 || locations.some(p => !Number.isFinite(p.lat) || !Number.isFinite(p.lon))) throw new Error('スタートとゴールの地点を指定してください。');
@@ -380,7 +354,7 @@
     const result = makeFrames(g, ids, visits, data, options);
     return {...result, snapped: snapped.map(s => ({...g.nodes.get(s.id), offset: s.offset})), sourceDate: data.timestamp};
   }
-  const api = {GENERATION_VERSION:11,RULE_VERSION:'kyoto-geometry-v4-visual-margin',distance,traceRoad,roadContinuations, bearing, angle, walkable, graph, snap, shortest, generate, continuation, selectFrames, baseFrameIsRequired, skipSimilarityTarget, junctionSignature, similarJunctions, orderWaypoints, signOf, project, landmarkInfo};
+  const api = {GENERATION_VERSION:10,RULE_VERSION:'kyoto-geometry-v4-visual-margin',distance,traceRoad, bearing, angle, walkable, graph, snap, shortest, generate, continuation, selectFrames, baseFrameIsRequired, skipSimilarityTarget, junctionSignature, similarJunctions, orderWaypoints, signOf, project, landmarkInfo};
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.KomaRouting = api;
 })(typeof window === 'undefined' ? globalThis : window);
