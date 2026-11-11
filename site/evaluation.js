@@ -63,6 +63,15 @@
     for(const [label,value] of rows){const tr=document.createElement('tr'),th=document.createElement('th'),td=document.createElement('td');th.textContent=label;th.scope='row';td.textContent=String(value);tr.append(th,td);table.append(tr);}
     const note=document.createElement('p');note.className='small';note.textContent='少ない回答数で精度を断定しないでください。複数の評価者の回答はJSONに個別に残ります。';$('summaryData').replaceChildren(table,note);
   }
+  function incomingInfo(pair){
+    const frame=pair.modelInput.candidate,explicit=pair.context.candidateIncomingBranch;
+    if(explicit!==undefined)return {index:explicit,source:explicit===null?'unknown':'route'};
+    const records=window.KOMA_INCOMING_ROADS?.datasets?.[state.dataset.id],record=records?.[pair.id];
+    if(record&&record[1]===window.KomaDiagram.fingerprint(frame))return {index:record[0],source:'verified'};
+    if(records||presetSets.some(p=>p.id===state.dataset.id))return {index:null,source:'unknown'};
+    const index=window.KomaDiagram.inferredIncomingBranch(frame);
+    return {index,source:index===null?'unknown':'inferred'};
+  }
   function render(){
     renderSetPicker();
     const dataset=state.dataset;
@@ -81,7 +90,9 @@
     if(!pair)return;
     const answer=answerFor(pair.id);
     $('targetDiagram').innerHTML=window.KomaDiagram.render(pair.modelInput.target,true);
-    $('candidateDiagram').innerHTML=window.KomaDiagram.render(pair.modelInput.candidate,false);
+    const incoming=incomingInfo(pair);
+    $('candidateDiagram').innerHTML=window.KomaDiagram.render(pair.modelInput.candidate,false,incoming.index);
+    $('candidateHelp').textContent=incoming.source==='unknown'?'進入した道を特定できません。判断が難しい場合は保留してください。':incoming.source==='inferred'?'青い太線は進入方向からの推定です。形を見分けられますか？':'青い太線は歩いてきた道です。形を見分けられますか？';
     $('answerForm').reset();$('notes').value=answer?.notes||'';
     for(const input of document.querySelectorAll('[name=choice]'))input.checked=input.value===answer?.choice;
     $('ruleResult').open=false;$('ruleResult').hidden=!answer;
@@ -184,8 +195,8 @@
     const pair=currentPair();if(busy||!pair||!api.CHOICES[choice])return;
     try{
       const list=orderedPairs(),index=list.findIndex(p=>p.id===pair.id),next=list[index+1]?.id;
-      const old=answerFor(pair.id),now=elapsedNow();
-      const dataset=api.saveResponse(state.dataset,{pairId:pair.id,evaluatorId:state.evaluatorId,role:state.role,choice,notes:$('notes').value.trim(),activeViewMs:now,decisionMs:Math.min(decision??now,now),updatedAt:new Date().toISOString(),...(old?.ruleViewedAt?{ruleViewedAt:old.ruleViewedAt}:{})});
+      const old=answerFor(pair.id),now=elapsedNow(),incoming=incomingInfo(pair);
+      const dataset=api.saveResponse(state.dataset,{pairId:pair.id,evaluatorId:state.evaluatorId,role:state.role,choice,diagramPresentation:'candidate-entry-v1',candidateIncomingBranch:incoming.index,entrySource:incoming.source,notes:$('notes').value.trim(),activeViewMs:now,decisionMs:Math.min(decision??now,now),updatedAt:new Date().toISOString(),...(old?.ruleViewedAt?{ruleViewedAt:old.ruleViewedAt}:{})});
       const nextState={...state,dataset,currentPairId:next||pair.id};
       // Advance only after the answer and all archived sets are durably stored.
       try{writeStorage(nextState);}catch{

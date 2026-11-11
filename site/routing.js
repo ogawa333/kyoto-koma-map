@@ -218,6 +218,16 @@
   function similarJunctions(a,b){
     return similarSignatures(junctionSignature(a),junctionSignature(b),a.branches?.length,b.branches?.length,junctionRadii(a),junctionRadii(b));
   }
+  // Identify only the arrival branch, using the actual approach polyline.
+  function incomingBranchIndex(frame){
+    const previous=[...(frame.routeIn||[])].reverse().find(p=>distance(p,frame.center)>.01);
+    if(!previous)return null;
+    const direction=bearing(frame.center,previous),choices=frame.branches.map((branch,index)=>{
+      const point=branch.find(p=>distance(p,frame.center)>.01);
+      return {index,error:point?Math.abs(angle(bearing(frame.center,point)-direction)):Infinity};
+    }).sort((a,b)=>a.error-b.error);
+    return choices[0]?.error<1e-5&&(!choices[1]||choices[1].error-choices[0].error>1e-5)?choices[0].index:null;
+  }
   function similarSignatures(a,b,aCount=a?.length,bCount=b?.length,aRadii=null,bRadii=null){
     if(aCount!==undefined&&bCount!==undefined&&aCount!==bCount)return false;
     if(!a||!b)return true;
@@ -354,7 +364,7 @@
     const result = makeFrames(g, ids, visits, data, options);
     return {...result, snapped: snapped.map(s => ({...g.nodes.get(s.id), offset: s.offset})), sourceDate: data.timestamp};
   }
-  const api = {GENERATION_VERSION:10,RULE_VERSION:'kyoto-geometry-v4-visual-margin',distance,traceRoad, bearing, angle, walkable, graph, snap, shortest, generate, continuation, selectFrames, baseFrameIsRequired, skipSimilarityTarget, junctionSignature, similarJunctions, orderWaypoints, signOf, project, landmarkInfo};
+  const api = {GENERATION_VERSION:10,RULE_VERSION:'kyoto-geometry-v4-visual-margin',distance,traceRoad, bearing, angle, walkable, graph, snap, shortest, generate, continuation, selectFrames, baseFrameIsRequired, skipSimilarityTarget, incomingBranchIndex, junctionSignature, similarJunctions, orderWaypoints, signOf, project, landmarkInfo};
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.KomaRouting = api;
 })(typeof window === 'undefined' ? globalThis : window);

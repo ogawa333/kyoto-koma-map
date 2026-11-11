@@ -33,7 +33,7 @@
       if(!engine.skipSimilarityTarget(target,edits)&&target.routeOut.length>=2){
         for(let i=previous+1;i<j;i++){
           const candidate=frames[i];
-          pairs.push({id:id+':'+i+':'+j,modelInput:{candidate:modelFrame(candidate),target:modelFrame(target,true)},rulePrediction:engine.similarJunctions(candidate,target)?'keep':'omit',splitGroups:[physicalId(candidate),physicalId(target)],context:{candidateId:candidate.id,targetId:target.id,candidateAt:candidate.at,targetAt:target.at,candidateAllNumber:i+1,targetAllNumber:j+1}});
+          pairs.push({id:id+':'+i+':'+j,modelInput:{candidate:modelFrame(candidate),target:modelFrame(target,true)},rulePrediction:engine.similarJunctions(candidate,target)?'keep':'omit',splitGroups:[physicalId(candidate),physicalId(target)],context:{candidateId:candidate.id,targetId:target.id,candidateAt:candidate.at,targetAt:target.at,candidateAllNumber:i+1,targetAllNumber:j+1,candidateIncomingBranch:engine.incomingBranchIndex(candidate)}});
         }
       }
       previous=j;
@@ -64,15 +64,20 @@
         if(!validEnds(p.modelInput.candidate)||!validEnds(p.modelInput.target))throw new Error('道路端の情報が不足しています。');
       }else if(p.modelInput.candidate.branchEnds!==undefined||p.modelInput.target.branchEnds!==undefined)throw new Error('旧形式の問題の表示は変更できません。');
       // Prevent imported photos, keys and candidate answers from entering the dataset.
-      if(!only(p,['id','modelInput','rulePrediction','splitGroups','context'])||!only(p.modelInput,['candidate','target'])||!only(p.context,['candidateId','targetId','candidateAt','targetAt','candidateAllNumber','targetAllNumber','courseId'])||canonical(p.modelInput.target)!==canonical(modelFrame(p.modelInput.target,true)))throw new Error('交差点ペアに不要な情報が含まれています。');
+      if(!only(p,['id','modelInput','rulePrediction','splitGroups','context'])||!only(p.modelInput,['candidate','target'])||!only(p.context,['candidateId','targetId','candidateAt','targetAt','candidateAllNumber','targetAllNumber','courseId','candidateIncomingBranch'])||canonical(p.modelInput.target)!==canonical(modelFrame(p.modelInput.target,true)))throw new Error('交差点ペアに不要な情報が含まれています。');
       if(canonical(p.modelInput.candidate)!==canonical(modelFrame(p.modelInput.candidate)))throw new Error('候補交差点に正解ルートなどの不要な情報が含まれています。');
+      if(p.context.candidateIncomingBranch!==undefined&&p.context.candidateIncomingBranch!==null&&(!Number.isInteger(p.context.candidateIncomingBranch)||p.context.candidateIncomingBranch<0||p.context.candidateIncomingBranch>=p.modelInput.candidate.branches.length))throw new Error('進入路の情報が正しくありません。');
       if(p.context.courseId!==undefined&&!courseIds.has(p.context.courseId))throw new Error('比較ペアの出典コースが見つかりません。');
       ids.add(p.id);
     }
     const keys=new Set();
     for(const r of d.responses){
       if(!ids.has(r.pairId)||(!text(r.evaluatorId,40)||r.evaluatorId.trim()!==r.evaluatorId||/[\u0000-\u001f\u007f]/.test(r.evaluatorId))||!ROLES.includes(r.role)||!isChoice(r.choice)||typeof r.notes!=='string'||r.notes.length>500||!Number.isFinite(r.activeViewMs)||r.activeViewMs<0||r.activeViewMs>86400000||!Number.isFinite(r.decisionMs)||r.decisionMs<0||r.decisionMs>r.activeViewMs||!Number.isFinite(Date.parse(r.updatedAt))||!Number.isInteger(r.revision)||r.revision<1||keys.has(responseKey(r)))throw new Error('回答データが正しくありません。');
-      if(!only(r,['pairId','evaluatorId','role','choice','notes','activeViewMs','decisionMs','updatedAt','revision','trainingLabel','retentionRecommendation','ruleViewedAt','blindAtDecision'])||(r.ruleViewedAt!==undefined&&!Number.isFinite(Date.parse(r.ruleViewedAt)))||(r.blindAtDecision!==undefined&&typeof r.blindAtDecision!=='boolean'))throw new Error('回答に不要な情報が含まれています。');
+      if(!only(r,['pairId','evaluatorId','role','choice','notes','activeViewMs','decisionMs','updatedAt','revision','trainingLabel','retentionRecommendation','ruleViewedAt','blindAtDecision','diagramPresentation','candidateIncomingBranch','entrySource'])||(r.ruleViewedAt!==undefined&&!Number.isFinite(Date.parse(r.ruleViewedAt)))||(r.blindAtDecision!==undefined&&typeof r.blindAtDecision!=='boolean'))throw new Error('回答に不要な情報が含まれています。');
+      if(r.diagramPresentation!==undefined){
+        const pair=d.pairs.find(p=>p.id===r.pairId);
+        if(r.diagramPresentation!=='candidate-entry-v1'||!['route','verified','inferred','unknown'].includes(r.entrySource)||(r.candidateIncomingBranch!==null&&(!Number.isInteger(r.candidateIncomingBranch)||r.candidateIncomingBranch<0||r.candidateIncomingBranch>=pair.modelInput.candidate.branches.length)))throw new Error('回答時の表示情報が正しくありません。');
+      }else if(r.candidateIncomingBranch!==undefined||r.entrySource!==undefined)throw new Error('回答時の表示条件が不足しています。');
       keys.add(responseKey(r));
     }
     return d;
