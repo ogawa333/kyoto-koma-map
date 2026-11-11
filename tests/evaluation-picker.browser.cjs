@@ -14,6 +14,10 @@ async function choose(page,id){await page.locator('#evaluationSet').selectOption
  assert.match(await p.locator('#progress').innerText(),/回答済み 1 \/ 6/);
  await choose(p,two);assert.equal((await saved(p)).otherDatasets[0].responses[0].notes,'以前の回答');
  assert.equal(await p.locator('#candidateDiagram svg, #targetDiagram svg').count(),2);
+ // This old question's true arrival branch differs from a heading-only guess.
+ await p.evaluate(([key,id])=>{const state=JSON.parse(localStorage.getItem(key));state.currentPairId=id+':pair:33';localStorage.setItem(key,JSON.stringify(state));},[KEY,two]);await p.reload();
+ await p.waitForSelector('#candidateDiagram .evaluation-entry');assert.equal(await p.locator('#candidateDiagram .evaluation-entry').getAttribute('data-incoming-branch'),'2');
+ assert.equal(await p.locator('#candidateDiagram [marker-end]').count(),0);assert.match(await p.locator('#candidateHelp').innerText(),/歩いてきた道/);
  for(const [width,height] of [[1280,640],[1366,768],[1024,768],[1920,1080]]){
   await p.setViewportSize({width,height});await p.evaluate(()=>scrollTo(0,0));
   for(const sel of ['#candidateDiagram svg','#targetDiagram svg',...['clear','borderline','indistinguishable','uncertain'].map(v=>'label.choice:has(input[value='+v+'])'),'#notes']){
@@ -22,6 +26,8 @@ async function choose(page,id){await page.locator('#evaluationSet').selectOption
  }
  await p.locator('[name=choice][value=borderline]').click();
  assert.equal((await saved(p)).dataset.responses.length,1);
+ assert.equal((await saved(p)).dataset.responses[0].entrySource,'verified');assert.equal((await saved(p)).dataset.responses[0].candidateIncomingBranch,2);
+ assert.equal((await saved(p)).dataset.responses[0].diagramPresentation,'candidate-entry-v1');
  await choose(p,three);await p.locator('[name=choice][value=indistinguishable]').click();
  await p.reload();assert.equal((await saved(p)).otherDatasets.length,2);
  await choose(p,two);assert.equal((await saved(p)).dataset.responses[0].choice,'borderline');
@@ -54,12 +60,14 @@ async function choose(page,id){await page.locator('#evaluationSet').selectOption
  await choose(p,sixth.id);assert.match(await p.locator('#activeSetStatus').innerText(),/⑥.*三浦/);
  assert.equal((await saved(p)).dataset.pairs.length,100);assert.equal((await saved(p)).dataset.responses.length,0);
  assert(await p.locator('#endingLegend').isVisible());assert.equal(await p.locator('#candidateDiagram [marker-end]').count(),0);
+ assert.equal(await p.locator('#candidateDiagram .evaluation-entry').count(),1);
  await p.setViewportSize({width:1280,height:640});await p.evaluate(()=>scrollTo(0,0));
  for(const selector of ['#candidateDiagram svg','#targetDiagram svg','#notes',...['clear','borderline','indistinguishable','uncertain'].map(v=>'label.choice:has(input[value='+v+'])')]){
    const box=await p.locator(selector).boundingBox();assert(box&&box.y>=0&&box.y+box.height<=641,JSON.stringify({selector,box}));
  }
  await p.locator('#notes').fill('⑥の評価理由');await p.locator('[name=choice][value=borderline]').click();
  await choose(p,seventh.id);assert.match(await p.locator('#activeSetStatus').innerText(),/⑦.*三浦/);
+ assert.equal(await p.locator('#candidateDiagram .evaluation-entry').count(),1);
  assert.equal((await saved(p)).dataset.pairs.length,100);assert.equal((await saved(p)).dataset.responses.length,0);
  // Selection criteria and machine predictions must not prime the next answer.
  assert.equal(await p.locator('#ruleResult').isVisible(),false);assert.equal(await p.locator('#candidateDiagram [marker-end]').count(),0);
