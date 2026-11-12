@@ -85,14 +85,14 @@ def run(prepared, folds_dir, output):
     if output.exists() and any(output.iterdir()):
         raise ValueError('Choose a new output directory; preserve existing experiments.')
     output.mkdir(parents=True, exist_ok=True)
-    rows = prepared['rows'];assert len(rows)==700
+    rows = prepared['rows'];assert len(rows)>=10
     key_index = {r['key']:i for i,r in enumerate(rows)};assert len(key_index)==len(rows)
     computed = [feature.vectors(r) for r in rows]
     X = {stage:np.asarray([v[stage] for v in computed], dtype=float) for stage in 'ABCD'}
     plan = dict(stages={'A':'original histogram', 'B':'A + correspondence and angular gaps', 'C':'B + actual entry, multi-depth curves, visible radius and reach masks', 'D':'C + inner-only weight/threshold selection'},
                 modelParameters=PARAMETERS, balancedClassWeight=True, multipliers=MULTIPLIERS, thresholds=THRESHOLDS,
                 falseOmissionCost=FN_COST, unnecessaryKeepCost=1, innerParts=3, featureVersion=feature.VERSION,
-                outerFolds='exact previous 5 folds: 560/140', featureCounts={s:X[s].shape[1] for s in 'ABC'},
+                outerFolds='5 grouped folds; approximately 80/20', featureCounts={s:X[s].shape[1] for s in 'ABC'},
                 selectedFinalAlgorithm='D selected before examining outer results',
                 featureCodeSha256=hashlib.sha256(Path(feature.__file__).read_bytes()).hexdigest())
     ai.write_json(output/'plan.json', plan)
@@ -100,7 +100,7 @@ def run(prepared, folds_dir, output):
     for fold in range(1,6):
         split = json.loads((folds_dir/f'fold-{fold}'/'split.json').read_text())
         train = [key_index[r['key']] for r in split['train']];test = [key_index[r['key']] for r in split['test']]
-        assert len(train)==560 and len(test)==140 and not set(train)&set(test)
+        assert len(train)+len(test)==len(rows) and abs(len(test)-len(rows)/5)<=1 and not set(train)&set(test)
         assert not tested&set(test);tested.update(test)
         assert not {g for i in train for g in rows[i]['groups']}&{g for i in test for g in rows[i]['groups']}
         # Verify the frozen split still respects the physical grouping.
@@ -133,7 +133,7 @@ def run(prepared, folds_dir, output):
         print(json.dumps(dict(fold=fold,chosen=[chosen['multiplier'],chosen['threshold']],falseOmit={s:report['stages'][s]['falseOmit'] for s in 'ABCD'})),flush=True)
     assert tested==set(range(len(rows)))
     summary = {s:ai.metrics([dict(label=p['human'],choice=p['choice']) for p in predictions],[p[s] for p in predictions]) for s in ['rule','A','B','C','D']}
-    # Freeze the predeclared D pipeline on all 700. No outer-score model selection.
+    # Freeze the predeclared D pipeline on all eligible rows. No outer-score model selection.
     chosen, candidates, inner = tune(rows,X['C'],list(range(len(rows))),242)
     labels = [r['label'] for r in rows]
     clf = classifier(labels,chosen['multiplier']).fit(X['C'],labels)
@@ -143,7 +143,7 @@ def run(prepared, folds_dir, output):
                     inputFiles=prepared['inputFiles'],entrySources=prepared['entrySources'],sklearnVersion=sklearn.__version__,
                     finalTestStatus='pending human answers to a new, disjoint unanswered set',finalTestPredictionsViewed=False)
     ai.write_json(output/'freeze.json',manifest)
-    ai.write_json(output/'results.json',dict(plan=plan,summary=summary,folds=fold_reports,finalChosen=chosen,coverage=dict(uniqueTestPairs=700,totalAppearances=len(predictions))))
+    ai.write_json(output/'results.json',dict(plan=plan,summary=summary,folds=fold_reports,finalChosen=chosen,coverage=dict(uniqueTestPairs=len(rows),totalAppearances=len(predictions))))
     with (output/'predictions.csv').open('w',encoding='utf-8-sig',newline='') as f:
         writer=csv.DictWriter(f,fieldnames=list(predictions[0]));writer.writeheader();writer.writerows([{**p,'references':json.dumps(p['references'])} for p in predictions])
     print(json.dumps(summary,ensure_ascii=False,indent=2))
