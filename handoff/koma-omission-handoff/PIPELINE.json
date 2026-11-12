@@ -1,0 +1,17 @@
+{
+  "format": "koma-omission-handoff-v1",
+  "recommendedInitialMode": "rule",
+  "availableModes": ["all", "rule", "hybrid-experimental"],
+  "modelPath": "models/corrected-candidate/model.json",
+  "featureVersion": "junction-correspondence-entry-curve-v1:D",
+  "features": 350,
+  "branchLimitMeters": 28,
+  "approachSampleMeters": 8,
+  "signatureDepthMeters": [8, 20],
+  "detailedDepthMeters": [2, 5, 8, 12, 20],
+  "hybridGuard": {"equalBranchCount": true, "maxAngleDegrees": 30, "minKeepScore": 0.2},
+  "retainOnMissingGeometryOrEntryOrInferenceFailure": true,
+  "hybridIndependentlyValidated": false,
+  "candidateModelIndependentlyValidated": false,
+  "historicalCorrectedRecount": {"n": 697, "keep": 67, "omit": 630, "FN": 1, "FP": 53, "appliesToThisCandidateModel": false}
+}

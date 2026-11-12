@@ -1,0 +1,77 @@
+{
+  "fold": 2,
+  "train": 557,
+  "test": 140,
+  "stages": {
+    "A": {
+      "trueKeep": 4,
+      "falseOmit": 8,
+      "unnecessaryKeep": 2,
+      "trueOmit": 126,
+      "borderline": 13,
+      "borderlineOmitted": 12,
+      "n": 140,
+      "accuracy": 0.9285714285714286,
+      "falseOmissionRate": 0.6666666666666666,
+      "unnecessaryKeepRate": 0.015625,
+      "borderlineOmissionRate": 0.9230769230769231
+    },
+    "B": {
+      "trueKeep": 9,
+      "falseOmit": 3,
+      "unnecessaryKeep": 5,
+      "trueOmit": 123,
+      "borderline": 13,
+      "borderlineOmitted": 9,
+      "n": 140,
+      "accuracy": 0.9428571428571428,
+      "falseOmissionRate": 0.25,
+      "unnecessaryKeepRate": 0.0390625,
+      "borderlineOmissionRate": 0.6923076923076923
+    },
+    "C": {
+      "trueKeep": 9,
+      "falseOmit": 3,
+      "unnecessaryKeep": 5,
+      "trueOmit": 123,
+      "borderline": 13,
+      "borderlineOmitted": 9,
+      "n": 140,
+      "accuracy": 0.9428571428571428,
+      "falseOmissionRate": 0.25,
+      "unnecessaryKeepRate": 0.0390625,
+      "borderlineOmissionRate": 0.6923076923076923
+    },
+    "D": {
+      "trueKeep": 9,
+      "falseOmit": 3,
+      "unnecessaryKeep": 6,
+      "trueOmit": 122,
+      "borderline": 13,
+      "borderlineOmitted": 9,
+      "n": 140,
+      "accuracy": 0.9357142857142857,
+      "falseOmissionRate": 0.25,
+      "unnecessaryKeepRate": 0.046875,
+      "borderlineOmissionRate": 0.6923076923076923
+    }
+  },
+  "chosen": {
+    "multiplier": 4,
+    "threshold": 0.5,
+    "loss": 68,
+    "metrics": {
+      "trueKeep": 46,
+      "falseOmit": 10,
+      "unnecessaryKeep": 18,
+      "trueOmit": 483,
+      "borderline": 39,
+      "borderlineOmitted": 25,
+      "n": 557,
+      "accuracy": 0.9497307001795332,
+      "falseOmissionRate": 0.17857142857142858,
+      "unnecessaryKeepRate": 0.03592814371257485,
+      "borderlineOmissionRate": 0.6410256410256411
+    }
+  }
+}

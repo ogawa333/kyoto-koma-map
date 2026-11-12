@@ -1,0 +1,39 @@
+{
+  "stages": {
+    "A": "original histogram",
+    "B": "A + correspondence and angular gaps",
+    "C": "B + actual entry, multi-depth curves, visible radius and reach masks",
+    "D": "C + inner-only weight/threshold selection"
+  },
+  "modelParameters": {
+    "n_estimators": 200,
+    "max_depth": 5,
+    "min_samples_leaf": 2,
+    "random_state": 42,
+    "n_jobs": 1
+  },
+  "balancedClassWeight": true,
+  "multipliers": [
+    1,
+    2,
+    4
+  ],
+  "thresholds": [
+    0.2,
+    0.3,
+    0.4,
+    0.5
+  ],
+  "falseOmissionCost": 5,
+  "unnecessaryKeepCost": 1,
+  "innerParts": 3,
+  "featureVersion": "junction-correspondence-entry-curve-v1",
+  "outerFolds": "5 grouped folds; approximately 80/20",
+  "featureCounts": {
+    "A": 147,
+    "B": 186,
+    "C": 350
+  },
+  "selectedFinalAlgorithm": "D selected before examining outer results",
+  "featureCodeSha256": "9730d149eb0c6a8eaece64ab26f889accba5b2b7e39e5f90b51145e8cac06840"
+}

@@ -1,0 +1,17 @@
+{
+  "sourceRepository": "https://github.com/ogawa333/kyoto-koma-map",
+  "sourceCommit": "cc6d9699a1d8df1ec42cd433ac40d8e016f70292",
+  "targetRepository": "https://github.com/shotaciel5/MiuraWalkingRally",
+  "targetBranch": "feature/course-publication-controls",
+  "targetVerifiedRemoteCommit": "21adcfebdae2615d308637af3ab7b52c0a487fed",
+  "createdAt": "2026-11-12",
+  "python": "3.12.14",
+  "node": "v24.22.1",
+  "externalTest8Included": false,
+  "singleEvaluator": "P001",
+  "totalOriginal": 700,
+  "excluded": 3,
+  "trainingRows": 697,
+  "correctedKeep": 67,
+  "correctedOmit": 630
+}

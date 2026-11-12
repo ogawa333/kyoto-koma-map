@@ -1,0 +1,77 @@
+{
+  "fold": 1,
+  "train": 557,
+  "test": 140,
+  "stages": {
+    "A": {
+      "trueKeep": 10,
+      "falseOmit": 5,
+      "unnecessaryKeep": 5,
+      "trueOmit": 120,
+      "borderline": 10,
+      "borderlineOmitted": 7,
+      "n": 140,
+      "accuracy": 0.9285714285714286,
+      "falseOmissionRate": 0.3333333333333333,
+      "unnecessaryKeepRate": 0.04,
+      "borderlineOmissionRate": 0.7
+    },
+    "B": {
+      "trueKeep": 14,
+      "falseOmit": 1,
+      "unnecessaryKeep": 9,
+      "trueOmit": 116,
+      "borderline": 10,
+      "borderlineOmitted": 5,
+      "n": 140,
+      "accuracy": 0.9285714285714286,
+      "falseOmissionRate": 0.06666666666666667,
+      "unnecessaryKeepRate": 0.072,
+      "borderlineOmissionRate": 0.5
+    },
+    "C": {
+      "trueKeep": 14,
+      "falseOmit": 1,
+      "unnecessaryKeep": 9,
+      "trueOmit": 116,
+      "borderline": 10,
+      "borderlineOmitted": 5,
+      "n": 140,
+      "accuracy": 0.9285714285714286,
+      "falseOmissionRate": 0.06666666666666667,
+      "unnecessaryKeepRate": 0.072,
+      "borderlineOmissionRate": 0.5
+    },
+    "D": {
+      "trueKeep": 14,
+      "falseOmit": 1,
+      "unnecessaryKeep": 17,
+      "trueOmit": 108,
+      "borderline": 10,
+      "borderlineOmitted": 5,
+      "n": 140,
+      "accuracy": 0.8714285714285714,
+      "falseOmissionRate": 0.06666666666666667,
+      "unnecessaryKeepRate": 0.136,
+      "borderlineOmissionRate": 0.5
+    }
+  },
+  "chosen": {
+    "multiplier": 1,
+    "threshold": 0.3,
+    "loss": 68,
+    "metrics": {
+      "trueKeep": 46,
+      "falseOmit": 7,
+      "unnecessaryKeep": 33,
+      "trueOmit": 471,
+      "borderline": 42,
+      "borderlineOmitted": 25,
+      "n": 557,
+      "accuracy": 0.9281867145421903,
+      "falseOmissionRate": 0.1320754716981132,
+      "unnecessaryKeepRate": 0.06547619047619048,
+      "borderlineOmissionRate": 0.5952380952380952
+    }
+  }
+}

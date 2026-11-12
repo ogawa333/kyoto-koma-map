@@ -1,0 +1,11 @@
+{
+  "geometryKey": "bd82f8bb807a6fb22e51199998bb159ba6c6b99a3d433313601019acef3034b6",
+  "datasetId": "cbb5c4e3-75f2-40af-b7ca-c5ea65d647f8",
+  "pairId": "cbb5c4e3-75f2-40af-b7ca-c5ea65d647f8:pair:42",
+  "evaluatorId": "P001",
+  "previousLabel": "keep",
+  "correctedLabel": "omit",
+  "source": "User instruction: 事例01は残さない",
+  "binaryLabelOnly": true,
+  "note": "明確／ギリギリの区別は未指定。二値ラベルのみ修正。元ファイルは保持。"
+}

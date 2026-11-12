@@ -1,0 +1,517 @@
+{
+  "plan": {
+    "stages": {
+      "A": "original histogram",
+      "B": "A + correspondence and angular gaps",
+      "C": "B + actual entry, multi-depth curves, visible radius and reach masks",
+      "D": "C + inner-only weight/threshold selection"
+    },
+    "modelParameters": {
+      "n_estimators": 200,
+      "max_depth": 5,
+      "min_samples_leaf": 2,
+      "random_state": 42,
+      "n_jobs": 1
+    },
+    "balancedClassWeight": true,
+    "multipliers": [
+      1,
+      2,
+      4
+    ],
+    "thresholds": [
+      0.2,
+      0.3,
+      0.4,
+      0.5
+    ],
+    "falseOmissionCost": 5,
+    "unnecessaryKeepCost": 1,
+    "innerParts": 3,
+    "featureVersion": "junction-correspondence-entry-curve-v1",
+    "outerFolds": "5 grouped folds; approximately 80/20",
+    "featureCounts": {
+      "A": 147,
+      "B": 186,
+      "C": 350
+    },
+    "selectedFinalAlgorithm": "D selected before examining outer results",
+    "featureCodeSha256": "9730d149eb0c6a8eaece64ab26f889accba5b2b7e39e5f90b51145e8cac06840"
+  },
+  "summary": {
+    "rule": {
+      "trueKeep": 63,
+      "falseOmit": 5,
+      "unnecessaryKeep": 42,
+      "trueOmit": 587,
+      "borderline": 52,
+      "borderlineOmitted": 25,
+      "n": 697,
+      "accuracy": 0.9325681492109039,
+      "falseOmissionRate": 0.07352941176470588,
+      "unnecessaryKeepRate": 0.06677265500794913,
+      "borderlineOmissionRate": 0.4807692307692308
+    },
+    "A": {
+      "trueKeep": 37,
+      "falseOmit": 31,
+      "unnecessaryKeep": 14,
+      "trueOmit": 615,
+      "borderline": 52,
+      "borderlineOmitted": 41,
+      "n": 697,
+      "accuracy": 0.9354375896700143,
+      "falseOmissionRate": 0.45588235294117646,
+      "unnecessaryKeepRate": 0.022257551669316374,
+      "borderlineOmissionRate": 0.7884615384615384
+    },
+    "B": {
+      "trueKeep": 53,
+      "falseOmit": 15,
+      "unnecessaryKeep": 23,
+      "trueOmit": 606,
+      "borderline": 52,
+      "borderlineOmitted": 35,
+      "n": 697,
+      "accuracy": 0.945480631276901,
+      "falseOmissionRate": 0.22058823529411764,
+      "unnecessaryKeepRate": 0.03656597774244833,
+      "borderlineOmissionRate": 0.6730769230769231
+    },
+    "C": {
+      "trueKeep": 51,
+      "falseOmit": 17,
+      "unnecessaryKeep": 20,
+      "trueOmit": 609,
+      "borderline": 52,
+      "borderlineOmitted": 38,
+      "n": 697,
+      "accuracy": 0.9469153515064562,
+      "falseOmissionRate": 0.25,
+      "unnecessaryKeepRate": 0.03179650238473768,
+      "borderlineOmissionRate": 0.7307692307692307
+    },
+    "D": {
+      "trueKeep": 55,
+      "falseOmit": 13,
+      "unnecessaryKeep": 41,
+      "trueOmit": 588,
+      "borderline": 52,
+      "borderlineOmitted": 30,
+      "n": 697,
+      "accuracy": 0.9225251076040172,
+      "falseOmissionRate": 0.19117647058823528,
+      "unnecessaryKeepRate": 0.06518282988871224,
+      "borderlineOmissionRate": 0.5769230769230769
+    }
+  },
+  "folds": [
+    {
+      "fold": 1,
+      "train": 557,
+      "test": 140,
+      "stages": {
+        "A": {
+          "trueKeep": 10,
+          "falseOmit": 5,
+          "unnecessaryKeep": 5,
+          "trueOmit": 120,
+          "borderline": 10,
+          "borderlineOmitted": 7,
+          "n": 140,
+          "accuracy": 0.9285714285714286,
+          "falseOmissionRate": 0.3333333333333333,
+          "unnecessaryKeepRate": 0.04,
+          "borderlineOmissionRate": 0.7
+        },
+        "B": {
+          "trueKeep": 14,
+          "falseOmit": 1,
+          "unnecessaryKeep": 9,
+          "trueOmit": 116,
+          "borderline": 10,
+          "borderlineOmitted": 5,
+          "n": 140,
+          "accuracy": 0.9285714285714286,
+          "falseOmissionRate": 0.06666666666666667,
+          "unnecessaryKeepRate": 0.072,
+          "borderlineOmissionRate": 0.5
+        },
+        "C": {
+          "trueKeep": 14,
+          "falseOmit": 1,
+          "unnecessaryKeep": 9,
+          "trueOmit": 116,
+          "borderline": 10,
+          "borderlineOmitted": 5,
+          "n": 140,
+          "accuracy": 0.9285714285714286,
+          "falseOmissionRate": 0.06666666666666667,
+          "unnecessaryKeepRate": 0.072,
+          "borderlineOmissionRate": 0.5
+        },
+        "D": {
+          "trueKeep": 14,
+          "falseOmit": 1,
+          "unnecessaryKeep": 17,
+          "trueOmit": 108,
+          "borderline": 10,
+          "borderlineOmitted": 5,
+          "n": 140,
+          "accuracy": 0.8714285714285714,
+          "falseOmissionRate": 0.06666666666666667,
+          "unnecessaryKeepRate": 0.136,
+          "borderlineOmissionRate": 0.5
+        }
+      },
+      "chosen": {
+        "multiplier": 1,
+        "threshold": 0.3,
+        "loss": 68,
+        "metrics": {
+          "trueKeep": 46,
+          "falseOmit": 7,
+          "unnecessaryKeep": 33,
+          "trueOmit": 471,
+          "borderline": 42,
+          "borderlineOmitted": 25,
+          "n": 557,
+          "accuracy": 0.9281867145421903,
+          "falseOmissionRate": 0.1320754716981132,
+          "unnecessaryKeepRate": 0.06547619047619048,
+          "borderlineOmissionRate": 0.5952380952380952
+        }
+      }
+    },
+    {
+      "fold": 2,
+      "train": 557,
+      "test": 140,
+      "stages": {
+        "A": {
+          "trueKeep": 4,
+          "falseOmit": 8,
+          "unnecessaryKeep": 2,
+          "trueOmit": 126,
+          "borderline": 13,
+          "borderlineOmitted": 12,
+          "n": 140,
+          "accuracy": 0.9285714285714286,
+          "falseOmissionRate": 0.6666666666666666,
+          "unnecessaryKeepRate": 0.015625,
+          "borderlineOmissionRate": 0.9230769230769231
+        },
+        "B": {
+          "trueKeep": 9,
+          "falseOmit": 3,
+          "unnecessaryKeep": 5,
+          "trueOmit": 123,
+          "borderline": 13,
+          "borderlineOmitted": 9,
+          "n": 140,
+          "accuracy": 0.9428571428571428,
+          "falseOmissionRate": 0.25,
+          "unnecessaryKeepRate": 0.0390625,
+          "borderlineOmissionRate": 0.6923076923076923
+        },
+        "C": {
+          "trueKeep": 9,
+          "falseOmit": 3,
+          "unnecessaryKeep": 5,
+          "trueOmit": 123,
+          "borderline": 13,
+          "borderlineOmitted": 9,
+          "n": 140,
+          "accuracy": 0.9428571428571428,
+          "falseOmissionRate": 0.25,
+          "unnecessaryKeepRate": 0.0390625,
+          "borderlineOmissionRate": 0.6923076923076923
+        },
+        "D": {
+          "trueKeep": 9,
+          "falseOmit": 3,
+          "unnecessaryKeep": 6,
+          "trueOmit": 122,
+          "borderline": 13,
+          "borderlineOmitted": 9,
+          "n": 140,
+          "accuracy": 0.9357142857142857,
+          "falseOmissionRate": 0.25,
+          "unnecessaryKeepRate": 0.046875,
+          "borderlineOmissionRate": 0.6923076923076923
+        }
+      },
+      "chosen": {
+        "multiplier": 4,
+        "threshold": 0.5,
+        "loss": 68,
+        "metrics": {
+          "trueKeep": 46,
+          "falseOmit": 10,
+          "unnecessaryKeep": 18,
+          "trueOmit": 483,
+          "borderline": 39,
+          "borderlineOmitted": 25,
+          "n": 557,
+          "accuracy": 0.9497307001795332,
+          "falseOmissionRate": 0.17857142857142858,
+          "unnecessaryKeepRate": 0.03592814371257485,
+          "borderlineOmissionRate": 0.6410256410256411
+        }
+      }
+    },
+    {
+      "fold": 3,
+      "train": 558,
+      "test": 139,
+      "stages": {
+        "A": {
+          "trueKeep": 4,
+          "falseOmit": 6,
+          "unnecessaryKeep": 3,
+          "trueOmit": 126,
+          "borderline": 9,
+          "borderlineOmitted": 6,
+          "n": 139,
+          "accuracy": 0.935251798561151,
+          "falseOmissionRate": 0.6,
+          "unnecessaryKeepRate": 0.023255813953488372,
+          "borderlineOmissionRate": 0.6666666666666666
+        },
+        "B": {
+          "trueKeep": 6,
+          "falseOmit": 4,
+          "unnecessaryKeep": 3,
+          "trueOmit": 126,
+          "borderline": 9,
+          "borderlineOmitted": 6,
+          "n": 139,
+          "accuracy": 0.9496402877697842,
+          "falseOmissionRate": 0.4,
+          "unnecessaryKeepRate": 0.023255813953488372,
+          "borderlineOmissionRate": 0.6666666666666666
+        },
+        "C": {
+          "trueKeep": 6,
+          "falseOmit": 4,
+          "unnecessaryKeep": 3,
+          "trueOmit": 126,
+          "borderline": 9,
+          "borderlineOmitted": 6,
+          "n": 139,
+          "accuracy": 0.9496402877697842,
+          "falseOmissionRate": 0.4,
+          "unnecessaryKeepRate": 0.023255813953488372,
+          "borderlineOmissionRate": 0.6666666666666666
+        },
+        "D": {
+          "trueKeep": 8,
+          "falseOmit": 2,
+          "unnecessaryKeep": 7,
+          "trueOmit": 122,
+          "borderline": 9,
+          "borderlineOmitted": 6,
+          "n": 139,
+          "accuracy": 0.935251798561151,
+          "falseOmissionRate": 0.2,
+          "unnecessaryKeepRate": 0.05426356589147287,
+          "borderlineOmissionRate": 0.6666666666666666
+        }
+      },
+      "chosen": {
+        "multiplier": 2,
+        "threshold": 0.3,
+        "loss": 86,
+        "metrics": {
+          "trueKeep": 48,
+          "falseOmit": 10,
+          "unnecessaryKeep": 36,
+          "trueOmit": 464,
+          "borderline": 43,
+          "borderlineOmitted": 25,
+          "n": 558,
+          "accuracy": 0.9175627240143369,
+          "falseOmissionRate": 0.1724137931034483,
+          "unnecessaryKeepRate": 0.072,
+          "borderlineOmissionRate": 0.5813953488372093
+        }
+      }
+    },
+    {
+      "fold": 4,
+      "train": 558,
+      "test": 139,
+      "stages": {
+        "A": {
+          "trueKeep": 9,
+          "falseOmit": 5,
+          "unnecessaryKeep": 4,
+          "trueOmit": 121,
+          "borderline": 11,
+          "borderlineOmitted": 7,
+          "n": 139,
+          "accuracy": 0.935251798561151,
+          "falseOmissionRate": 0.35714285714285715,
+          "unnecessaryKeepRate": 0.032,
+          "borderlineOmissionRate": 0.6363636363636364
+        },
+        "B": {
+          "trueKeep": 10,
+          "falseOmit": 4,
+          "unnecessaryKeep": 5,
+          "trueOmit": 120,
+          "borderline": 11,
+          "borderlineOmitted": 7,
+          "n": 139,
+          "accuracy": 0.935251798561151,
+          "falseOmissionRate": 0.2857142857142857,
+          "unnecessaryKeepRate": 0.04,
+          "borderlineOmissionRate": 0.6363636363636364
+        },
+        "C": {
+          "trueKeep": 10,
+          "falseOmit": 4,
+          "unnecessaryKeep": 3,
+          "trueOmit": 122,
+          "borderline": 11,
+          "borderlineOmitted": 9,
+          "n": 139,
+          "accuracy": 0.9496402877697842,
+          "falseOmissionRate": 0.2857142857142857,
+          "unnecessaryKeepRate": 0.024,
+          "borderlineOmissionRate": 0.8181818181818182
+        },
+        "D": {
+          "trueKeep": 10,
+          "falseOmit": 4,
+          "unnecessaryKeep": 7,
+          "trueOmit": 118,
+          "borderline": 11,
+          "borderlineOmitted": 5,
+          "n": 139,
+          "accuracy": 0.920863309352518,
+          "falseOmissionRate": 0.2857142857142857,
+          "unnecessaryKeepRate": 0.056,
+          "borderlineOmissionRate": 0.45454545454545453
+        }
+      },
+      "chosen": {
+        "multiplier": 1,
+        "threshold": 0.4,
+        "loss": 66,
+        "metrics": {
+          "trueKeep": 45,
+          "falseOmit": 9,
+          "unnecessaryKeep": 21,
+          "trueOmit": 483,
+          "borderline": 41,
+          "borderlineOmitted": 27,
+          "n": 558,
+          "accuracy": 0.946236559139785,
+          "falseOmissionRate": 0.16666666666666666,
+          "unnecessaryKeepRate": 0.041666666666666664,
+          "borderlineOmissionRate": 0.6585365853658537
+        }
+      }
+    },
+    {
+      "fold": 5,
+      "train": 558,
+      "test": 139,
+      "stages": {
+        "A": {
+          "trueKeep": 10,
+          "falseOmit": 7,
+          "unnecessaryKeep": 0,
+          "trueOmit": 122,
+          "borderline": 9,
+          "borderlineOmitted": 9,
+          "n": 139,
+          "accuracy": 0.9496402877697842,
+          "falseOmissionRate": 0.4117647058823529,
+          "unnecessaryKeepRate": 0.0,
+          "borderlineOmissionRate": 1.0
+        },
+        "B": {
+          "trueKeep": 14,
+          "falseOmit": 3,
+          "unnecessaryKeep": 1,
+          "trueOmit": 121,
+          "borderline": 9,
+          "borderlineOmitted": 8,
+          "n": 139,
+          "accuracy": 0.9712230215827338,
+          "falseOmissionRate": 0.17647058823529413,
+          "unnecessaryKeepRate": 0.00819672131147541,
+          "borderlineOmissionRate": 0.8888888888888888
+        },
+        "C": {
+          "trueKeep": 12,
+          "falseOmit": 5,
+          "unnecessaryKeep": 0,
+          "trueOmit": 122,
+          "borderline": 9,
+          "borderlineOmitted": 9,
+          "n": 139,
+          "accuracy": 0.9640287769784173,
+          "falseOmissionRate": 0.29411764705882354,
+          "unnecessaryKeepRate": 0.0,
+          "borderlineOmissionRate": 1.0
+        },
+        "D": {
+          "trueKeep": 14,
+          "falseOmit": 3,
+          "unnecessaryKeep": 4,
+          "trueOmit": 118,
+          "borderline": 9,
+          "borderlineOmitted": 5,
+          "n": 139,
+          "accuracy": 0.9496402877697842,
+          "falseOmissionRate": 0.17647058823529413,
+          "unnecessaryKeepRate": 0.03278688524590164,
+          "borderlineOmissionRate": 0.5555555555555556
+        }
+      },
+      "chosen": {
+        "multiplier": 4,
+        "threshold": 0.5,
+        "loss": 91,
+        "metrics": {
+          "trueKeep": 38,
+          "falseOmit": 13,
+          "unnecessaryKeep": 26,
+          "trueOmit": 481,
+          "borderline": 43,
+          "borderlineOmitted": 26,
+          "n": 558,
+          "accuracy": 0.9301075268817204,
+          "falseOmissionRate": 0.2549019607843137,
+          "unnecessaryKeepRate": 0.05128205128205128,
+          "borderlineOmissionRate": 0.6046511627906976
+        }
+      }
+    }
+  ],
+  "finalChosen": {
+    "multiplier": 4,
+    "threshold": 0.4,
+    "loss": 93,
+    "metrics": {
+      "trueKeep": 58,
+      "falseOmit": 10,
+      "unnecessaryKeep": 43,
+      "trueOmit": 586,
+      "borderline": 52,
+      "borderlineOmitted": 28,
+      "n": 697,
+      "accuracy": 0.9239598278335724,
+      "falseOmissionRate": 0.14705882352941177,
+      "unnecessaryKeepRate": 0.06836248012718601,
+      "borderlineOmissionRate": 0.5384615384615384
+    }
+  },
+  "coverage": {
+    "uniqueTestPairs": 697,
+    "totalAppearances": 697
+  }
+}

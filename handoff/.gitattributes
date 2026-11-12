@@ -1,0 +1,4 @@
+# Preserve the distributed snapshot byte-for-byte for SHA256 verification.
+koma-omission-handoff/** -text
+# Exported CSV files intentionally retain their original CRLF line endings.
+koma-omission-handoff/**/*.csv whitespace=cr-at-eol

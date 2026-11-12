@@ -1,0 +1,118 @@
+{
+  "modelSha256": "f23fe9f0ea238d8edeb704c4c125977a183ca795123cdaec8e8c94eaf2390f57",
+  "plan": {
+    "stages": {
+      "A": "original histogram",
+      "B": "A + correspondence and angular gaps",
+      "C": "B + actual entry, multi-depth curves, visible radius and reach masks",
+      "D": "C + inner-only weight/threshold selection"
+    },
+    "modelParameters": {
+      "n_estimators": 200,
+      "max_depth": 5,
+      "min_samples_leaf": 2,
+      "random_state": 42,
+      "n_jobs": 1
+    },
+    "balancedClassWeight": true,
+    "multipliers": [
+      1,
+      2,
+      4
+    ],
+    "thresholds": [
+      0.2,
+      0.3,
+      0.4,
+      0.5
+    ],
+    "falseOmissionCost": 5,
+    "unnecessaryKeepCost": 1,
+    "innerParts": 3,
+    "featureVersion": "junction-correspondence-entry-curve-v1",
+    "outerFolds": "5 grouped folds; approximately 80/20",
+    "featureCounts": {
+      "A": 147,
+      "B": 186,
+      "C": 350
+    },
+    "selectedFinalAlgorithm": "D selected before examining outer results",
+    "featureCodeSha256": "9730d149eb0c6a8eaece64ab26f889accba5b2b7e39e5f90b51145e8cac06840"
+  },
+  "chosen": {
+    "multiplier": 4,
+    "threshold": 0.4,
+    "loss": 93,
+    "metrics": {
+      "trueKeep": 58,
+      "falseOmit": 10,
+      "unnecessaryKeep": 43,
+      "trueOmit": 586,
+      "borderline": 52,
+      "borderlineOmitted": 28,
+      "n": 697,
+      "accuracy": 0.9239598278335724,
+      "falseOmissionRate": 0.14705882352941177,
+      "unnecessaryKeepRate": 0.06836248012718601,
+      "borderlineOmissionRate": 0.5384615384615384
+    }
+  },
+  "inputFiles": [
+    {
+      "file": "data/raw/set-01.json",
+      "id": "92d7a73c-39e5-4da3-aeaf-499d9e1b6e8e",
+      "sha256": "3162a4a6266c77828b5691be0868b2f10c805e2acc88a3a63a9b834802c684e8",
+      "pairs": 100,
+      "sourceRuleVersion": "kyoto-geometry-v3-signal-policy"
+    },
+    {
+      "file": "data/raw/set-02.json",
+      "id": "50b2bef2-face-4e6a-9085-6a14026b5cde",
+      "sha256": "a921d89a38839c9c07df539201ae261ef5eb24634389a7ca33472de8c36d9caf",
+      "pairs": 100,
+      "sourceRuleVersion": "kyoto-geometry-v3-signal-policy"
+    },
+    {
+      "file": "data/raw/set-03.json",
+      "id": "88924b4c-094f-4b42-925a-08aec0f6a121",
+      "sha256": "0404e7bd61b0124964404c7e3f86a936c5667c163d48fe2d36768017c914f303",
+      "pairs": 100,
+      "sourceRuleVersion": "kyoto-geometry-v3-signal-policy"
+    },
+    {
+      "file": "data/raw/set-04.json",
+      "id": "cbb5c4e3-75f2-40af-b7ca-c5ea65d647f8",
+      "sha256": "272122790c41ca55d120950e28ec2678a1958c4c8ced6c8690bf9ed71166aee2",
+      "pairs": 100,
+      "sourceRuleVersion": "kyoto-geometry-v3-signal-policy"
+    },
+    {
+      "file": "data/raw/set-05.json",
+      "id": "58037cac-de65-419a-8c4d-552290b8f7e4",
+      "sha256": "dce27957ad3de9750fb0a4688a0f9c826a332f649f95937561be4256e497faaa",
+      "pairs": 100,
+      "sourceRuleVersion": "kyoto-geometry-v3-signal-policy"
+    },
+    {
+      "file": "data/raw/set-06.json",
+      "id": "83031988-6c3b-57b5-9c8e-d0372282cbea",
+      "sha256": "a3362eda916900b3329f460ea5f17b18f972a935f36bfaeb5092bcef4a85ae09",
+      "pairs": 100,
+      "sourceRuleVersion": "kyoto-geometry-v4-visual-margin"
+    },
+    {
+      "file": "data/raw/set-07.json",
+      "id": "de6628d7-c538-563e-8514-d2bcfe226e59",
+      "sha256": "3b55da78a5b13d7f362294df077edd7266df3070902b3d880cd3a96133b51df4",
+      "pairs": 100,
+      "sourceRuleVersion": "kyoto-geometry-v4-visual-margin"
+    }
+  ],
+  "entrySources": {
+    "recovered": 97,
+    "verified": 600
+  },
+  "sklearnVersion": "1.8.0",
+  "finalTestStatus": "pending human answers to a new, disjoint unanswered set",
+  "finalTestPredictionsViewed": false
+}

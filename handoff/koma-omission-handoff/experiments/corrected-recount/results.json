@@ -1,0 +1,59 @@
+{
+  "n": 697,
+  "keep": 67,
+  "omit": 630,
+  "retrained": false,
+  "postHocExploratory": true,
+  "correction": {
+    "geometryKey": "bd82f8bb807a6fb22e51199998bb159ba6c6b99a3d433313601019acef3034b6",
+    "datasetId": "cbb5c4e3-75f2-40af-b7ca-c5ea65d647f8",
+    "pairId": "cbb5c4e3-75f2-40af-b7ca-c5ea65d647f8:pair:42",
+    "evaluatorId": "P001",
+    "previousLabel": "keep",
+    "correctedLabel": "omit",
+    "source": "User instruction: 事例01は残さない",
+    "binaryLabelOnly": true,
+    "note": "明確／ギリギリの区別は未指定。二値ラベルのみ修正。元ファイルは保持。"
+  },
+  "results": {
+    "current-rule": {
+      "trueKeep": 63,
+      "falseOmit": 4,
+      "unnecessaryKeep": 42,
+      "trueOmit": 588,
+      "borderline": 52,
+      "borderlineOmitted": 25,
+      "n": 697,
+      "accuracy": 0.9340028694404591,
+      "falseOmissionRate": 0.05970149253731343,
+      "unnecessaryKeepRate": 0.06666666666666667,
+      "borderlineOmissionRate": 0.4807692307692308
+    },
+    "both-must-omit": {
+      "trueKeep": 63,
+      "falseOmit": 4,
+      "unnecessaryKeep": 50,
+      "trueOmit": 580,
+      "borderline": 52,
+      "borderlineOmitted": 24,
+      "n": 697,
+      "accuracy": 0.9225251076040172,
+      "falseOmissionRate": 0.05970149253731343,
+      "unnecessaryKeepRate": 0.07936507936507936,
+      "borderlineOmissionRate": 0.46153846153846156
+    },
+    "guard30-score02": {
+      "trueKeep": 66,
+      "falseOmit": 1,
+      "unnecessaryKeep": 53,
+      "trueOmit": 577,
+      "borderline": 52,
+      "borderlineOmitted": 22,
+      "n": 697,
+      "accuracy": 0.9225251076040172,
+      "falseOmissionRate": 0.014925373134328358,
+      "unnecessaryKeepRate": 0.08412698412698413,
+      "borderlineOmissionRate": 0.4230769230769231
+    }
+  }
+}
