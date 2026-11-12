@@ -4,13 +4,14 @@ const fs = require('node:fs');
 const crypto = require('node:crypto');
 const evaluation = require('../site/evaluation-core.js');
 const routing = require('../site/routing.js');
+const exclusions = require('../config/junction-evaluation-exclusions.json').entries;
 function canonical(v) {
   if (Array.isArray(v)) return '[' + v.map(canonical).join(',') + ']';
   if (v && typeof v === 'object') return '{' + Object.keys(v).sort().map(k => JSON.stringify(k) + ':' + canonical(v[k])).join(',') + '}';
   return JSON.stringify(v);
 }
 function prepare(files, evaluatorId) {
-  const rows = new Map(), excluded = {unanswered: 0, uncertain: 0, unblinded: 0, invalidGeometry: 0, duplicates: 0};
+  const rows = new Map(), excluded = {unanswered: 0, uncertain: 0, unblinded: 0, invalidGeometry: 0, duplicates: 0, manualExclusions: 0};
   const datasets = new Set();
   let ruleVersion = null;
   for (const file of files) {
@@ -20,6 +21,8 @@ function prepare(files, evaluatorId) {
     datasets.add(d.id);
     const responses = new Map(d.responses.filter(r => r.evaluatorId === evaluatorId).map(r => [r.pairId, r]));
     for (const p of d.pairs) {
+      const geometryKey = crypto.createHash('sha256').update(canonical(p.modelInput)).digest('hex');
+      if (exclusions.some(e => (e.datasetId === d.id && e.pairId === p.id) || e.geometryKey === geometryKey)) { excluded.manualExclusions++; continue; }
       const r = responses.get(p.id);
       if (!r) { excluded.unanswered++; continue; }
       if (r.ruleViewedAt && Date.parse(r.updatedAt) >= Date.parse(r.ruleViewedAt)) { excluded.unblinded++; continue; }

@@ -76,6 +76,13 @@ async function choose(page,id){await page.locator('#evaluationSet').selectOption
  await choose(p,seventh.id);assert.equal((await saved(p)).dataset.responses[0].choice,'indistinguishable');
  await choose(p,fourth.id);assert.equal((await saved(p)).dataset.responses[0].choice,'borderline');
  console.log('PASS focused Miura sets VI/VII load, auto-save, switch and resume while preserving prior answers');
+ const eighth=JSON.parse(fs.readFileSync(root+'/site/data/evaluation-set-08.json'));
+ await choose(p,eighth.id);assert.match(await p.locator('#activeSetStatus').innerText(),/⑧.*最終確認/);
+ assert.equal((await saved(p)).dataset.responses.length,0);assert.equal((await saved(p)).dataset.pairs.length,100);
+ assert.equal(await p.locator('#candidateDiagram .evaluation-entry').count(),1);assert.equal(await p.locator('#candidateDiagram [marker-end]').count(),0);
+ await p.locator('[name=choice][value=borderline]').click();await p.reload();assert.equal((await saved(p)).dataset.responses.length,1);
+ assert.equal((await saved(p)).dataset.responses[0].entrySource,'route');await choose(p,sixth.id);assert.equal((await saved(p)).dataset.responses[0].notes,'⑥の評価理由');
+ console.log('PASS independent final set VIII opens and resumes with original answers preserved');
  // Archived presets resume even when the preset download fails.
  await p.route('**/data/evaluation-set-*.json',route=>route.abort());await choose(p,three);assert.equal((await saved(p)).dataset.responses.length,1);
  await p.locator('#settingsPanel').evaluate(e=>e.open=true);

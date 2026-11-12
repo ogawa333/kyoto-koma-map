@@ -1,0 +1,140 @@
+{
+  "exploratory": true,
+  "independentFinalTestStatus": "pending human answers to set VIII",
+  "summary": {
+    "rule": {
+      "trueKeep": 63,
+      "falseOmit": 8,
+      "unnecessaryKeep": 42,
+      "trueOmit": 587,
+      "borderline": 52,
+      "borderlineOmitted": 25,
+      "n": 700,
+      "accuracy": 0.9285714285714286,
+      "falseOmissionRate": 0.11267605633802817,
+      "unnecessaryKeepRate": 0.06677265500794913,
+      "borderlineOmissionRate": 0.4807692307692308
+    },
+    "A": {
+      "trueKeep": 38,
+      "falseOmit": 33,
+      "unnecessaryKeep": 15,
+      "trueOmit": 614,
+      "borderline": 52,
+      "borderlineOmitted": 40,
+      "n": 700,
+      "accuracy": 0.9314285714285714,
+      "falseOmissionRate": 0.4647887323943662,
+      "unnecessaryKeepRate": 0.02384737678855326,
+      "borderlineOmissionRate": 0.7692307692307693
+    },
+    "B": {
+      "trueKeep": 52,
+      "falseOmit": 19,
+      "unnecessaryKeep": 23,
+      "trueOmit": 606,
+      "borderline": 52,
+      "borderlineOmitted": 35,
+      "n": 700,
+      "accuracy": 0.94,
+      "falseOmissionRate": 0.2676056338028169,
+      "unnecessaryKeepRate": 0.03656597774244833,
+      "borderlineOmissionRate": 0.6730769230769231
+    },
+    "C": {
+      "trueKeep": 50,
+      "falseOmit": 21,
+      "unnecessaryKeep": 17,
+      "trueOmit": 612,
+      "borderline": 52,
+      "borderlineOmitted": 38,
+      "n": 700,
+      "accuracy": 0.9457142857142857,
+      "falseOmissionRate": 0.29577464788732394,
+      "unnecessaryKeepRate": 0.02702702702702703,
+      "borderlineOmissionRate": 0.7307692307692307
+    },
+    "D": {
+      "trueKeep": 55,
+      "falseOmit": 16,
+      "unnecessaryKeep": 34,
+      "trueOmit": 595,
+      "borderline": 52,
+      "borderlineOmitted": 30,
+      "n": 700,
+      "accuracy": 0.9285714285714286,
+      "falseOmissionRate": 0.22535211267605634,
+      "unnecessaryKeepRate": 0.05405405405405406,
+      "borderlineOmissionRate": 0.5769230769230769
+    }
+  },
+  "plan": {
+    "stages": {
+      "A": "original histogram",
+      "B": "A + correspondence and angular gaps",
+      "C": "B + actual entry, multi-depth curves, visible radius and reach masks",
+      "D": "C + inner-only weight/threshold selection"
+    },
+    "modelParameters": {
+      "n_estimators": 200,
+      "max_depth": 5,
+      "min_samples_leaf": 2,
+      "random_state": 42,
+      "n_jobs": 1
+    },
+    "balancedClassWeight": true,
+    "multipliers": [
+      1,
+      2,
+      4
+    ],
+    "thresholds": [
+      0.2,
+      0.3,
+      0.4,
+      0.5
+    ],
+    "falseOmissionCost": 5,
+    "unnecessaryKeepCost": 1,
+    "innerParts": 3,
+    "featureVersion": "junction-correspondence-entry-curve-v1",
+    "outerFolds": "exact previous 5 folds: 560/140",
+    "featureCounts": {
+      "A": 147,
+      "B": 186,
+      "C": 350
+    },
+    "selectedFinalAlgorithm": "D selected before examining outer results",
+    "featureCodeSha256": "9730d149eb0c6a8eaece64ab26f889accba5b2b7e39e5f90b51145e8cac06840"
+  },
+  "folds": [
+    {
+      "fold": 1,
+      "chosenMultiplier": 2,
+      "chosenThreshold": 0.4
+    },
+    {
+      "fold": 2,
+      "chosenMultiplier": 1,
+      "chosenThreshold": 0.4
+    },
+    {
+      "fold": 3,
+      "chosenMultiplier": 1,
+      "chosenThreshold": 0.4
+    },
+    {
+      "fold": 4,
+      "chosenMultiplier": 1,
+      "chosenThreshold": 0.3
+    },
+    {
+      "fold": 5,
+      "chosenMultiplier": 2,
+      "chosenThreshold": 0.5
+    }
+  ],
+  "frozenModelSha256": "692af8d2a5bc6b399dc5faade6d008ea78e0a60d78fa776bb3d9e6d591a36cfa",
+  "frozenMultiplier": 4,
+  "frozenThreshold": 0.5
+}

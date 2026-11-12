@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "requestedByUser": true,
+  "scope": "Exclude these three pairs from training and accuracy evaluation; preserve original exports and the locked final test.",
+  "entries": [
+    {
+      "caseNumber": 1,
+      "datasetId": "92d7a73c-39e5-4da3-aeaf-499d9e1b6e8e",
+      "pairId": "92d7a73c-39e5-4da3-aeaf-499d9e1b6e8e:65:66",
+      "geometryKey": "5901a14a1aaf0e45a8df2a87b85fbfc2a2369423606129badf8b9c99514b2cea",
+      "reason": "User excluded atypical OSM pedestrian-connection bulge"
+    },
+    {
+      "caseNumber": 5,
+      "datasetId": "92d7a73c-39e5-4da3-aeaf-499d9e1b6e8e",
+      "pairId": "92d7a73c-39e5-4da3-aeaf-499d9e1b6e8e:64:66",
+      "geometryKey": "d61850e0ba70c33bd963805427b9dd9c0b7b8ffcd0c67e3d4c95361639fdd561",
+      "reason": "User excluded atypical OSM pedestrian-connection bulge"
+    },
+    {
+      "caseNumber": 2,
+      "datasetId": "92d7a73c-39e5-4da3-aeaf-499d9e1b6e8e",
+      "pairId": "92d7a73c-39e5-4da3-aeaf-499d9e1b6e8e:7:9",
+      "geometryKey": "8023adc13af11e627e2a3d5344d0154c74e7d7c47bae5ec510446ba51bff0985",
+      "reason": "User excluded complex sidewalk/crossing/underground representation"
+    }
+  ]
+}
